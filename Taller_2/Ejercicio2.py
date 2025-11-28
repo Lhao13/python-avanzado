@@ -1,8 +1,8 @@
 import numpy as np
 
 # Generar datos de ejemplo con los nuevos parámetros
-np.random.seed(42)
-n = 120
+np.random.seed(123)
+n = 100
 x = np.random.normal(0, 1, n)
 true_beta0 = 0.5
 true_beta1 = -1.2
@@ -130,4 +130,3 @@ print("\nVerificación de intervalos creíbles:")
 print(f"β₀ verdadero en IC: {lower[0] <= true_beta0 <= upper[0]}")
 print(f"β₁ verdadero en IC: {lower[1] <= true_beta1 <= upper[1]}")
 print(f"σ verdadero en IC: {lower[2] <= true_sigma <= upper[2]}")
-
