@@ -17,7 +17,7 @@ class FinanceApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Finanzas Personales")
-        self.geometry("960x900")
+        self.geometry("1500x900")
         self.resizable(False, False)
 
         self._view_factories = {

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..db.connection import DatabaseConnection
+from ..repositories import FinancialReportRepository
 
 
 def _get_current_period() -> Tuple[int, int]:
@@ -67,3 +68,61 @@ def obtener_dashboard_stats() -> Dict[str, Optional[float]]:
         "monthly_incomes": _sum_by_type(year, month, "ingreso"),
         "monthly_budget": _monthly_budget(year, month),
     }
+
+
+def available_years() -> List[int]:
+    """Retorna los años disponibles con transacciones."""
+    return FinancialReportRepository(DatabaseConnection()).get_available_years()
+
+
+def _sum_transacciones(year: int, tipo: str) -> Optional[float]:
+    query = """
+    SELECT SUM(t.monto)
+    FROM transaccion t
+    JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+    WHERE YEAR(t.fecha) = %s
+      AND c.tipo = %s
+    """
+    return _scalar_query(query, (year, tipo))
+
+
+def annual_income(year: int) -> Optional[float]:
+    """Suma de ingresos registrados durante el año fiscal."""
+    return _sum_transacciones(year, "ingreso")
+
+
+def annual_deductible_expenses(year: int) -> Optional[float]:
+    """Suma de gastos marcados como deducibles durante el año."""
+    query = """
+    SELECT SUM(t.monto)
+    FROM transaccion t
+    JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+    WHERE YEAR(t.fecha) = %s
+      AND c.tipo = 'gasto'
+      AND c.deducible = 1
+    """
+    return _scalar_query(query, (year,))
+
+
+def annual_tax_summary(year: int, tax_rate: float = 0.12) -> Dict[str, Optional[float]]:
+    """Calcula ingreso, deducciones, base y el impuesto estimado."""
+    income = annual_income(year) or 0.0
+    deductions = annual_deductible_expenses(year) or 0.0
+    base = income - deductions
+    calculated = max(0.0, base * tax_rate)
+    return {
+        "year": year,
+        "income_total": income,
+        "deductible_expenses": deductions,
+        "base_imponible": max(0.0, base),
+        "calculated_tax": calculated,
+        "tax_rate": tax_rate,
+    }
+
+
+def tax_difference(year: int, paid_amount: float, tax_rate: float = 0.12) -> Optional[float]:
+    summary = annual_tax_summary(year, tax_rate)
+    calculated = summary.get("calculated_tax")
+    if calculated is None:
+        return None
+    return calculated - paid_amount

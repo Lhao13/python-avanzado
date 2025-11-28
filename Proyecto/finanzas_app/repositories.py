@@ -212,6 +212,31 @@ class ImpuestoAnualRepository(BaseRepository):
         )
         return self._execute_write(query, params)
 
+    def upsert_summary(self, impuesto: ImpuestoAnual) -> int:
+        """Guarda el resumen fiscal asegurando años únicos como clave primaria."""
+        query = """
+        INSERT INTO impuesto_anual
+            (anio, ingreso_total, gastos_deducibles, base_imponible, impuesto_calculado, impuesto_pagado, diferencia)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            ingreso_total = VALUES(ingreso_total),
+            gastos_deducibles = VALUES(gastos_deducibles),
+            base_imponible = VALUES(base_imponible),
+            impuesto_calculado = VALUES(impuesto_calculado),
+            impuesto_pagado = VALUES(impuesto_pagado),
+            diferencia = VALUES(diferencia)
+        """
+        params = (
+            impuesto.anio,
+            impuesto.ingreso_total,
+            impuesto.gastos_deducibles,
+            impuesto.base_imponible,
+            impuesto.impuesto_calculado,
+            impuesto.impuesto_pagado,
+            impuesto.diferencia,
+        )
+        return self._execute_write(query, params)
+
     def list_all(self) -> List[ImpuestoAnual]:
         """Retorna todos los registros de impuestos anuales."""
         query = """
@@ -479,6 +504,37 @@ class FinancialReportRepository(BaseRepository):
                 "annual": self.annual_incomes(),
             },
         }
+
+    def _transaction_detail_query(self, filters: list[str], params: list[Any]) -> List[Dict[str, Any]]:
+        """Base para consultas detalladas de transacciones con categoría."""
+        query = f"""
+        SELECT
+            t.Id_Transaccion AS id_transaccion,
+            t.monto,
+            t.cantidad,
+            t.fecha,
+            t.description,
+            c.Id_Categoria AS categoria_id,
+            c.nombre AS categoria,
+            c.tipo AS categoria_tipo
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE {' AND '.join(filters)}
+        ORDER BY t.fecha DESC
+        """
+        return self._execute_read(query, tuple(params))
+
+    def transactions_for_year(self, year: int) -> List[Dict[str, Any]]:
+        """Trae todas las transacciones realizadas durante el año seleccionado."""
+        filters = ["YEAR(t.fecha) = %s"]
+        params: list[Any] = [year]
+        return self._transaction_detail_query(filters, params)
+
+    def transactions_for_month(self, year: int, month: int) -> List[Dict[str, Any]]:
+        """Trae las transacciones del mes y año seleccionados."""
+        filters = ["YEAR(t.fecha) = %s", "MONTH(t.fecha) = %s"]
+        params = [year, month]
+        return self._transaction_detail_query(filters, params)
 
     def get_available_years(self) -> list[int]:
         query = """
