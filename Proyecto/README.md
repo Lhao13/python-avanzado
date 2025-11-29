@@ -3,7 +3,7 @@
 Proyecto en Python para insertar y consultar datos del esquema MySQL local descrito en `scripts/bd.sql`.
 
 ## Objetivo
-Registrar y categorizar ingresos y egresos usando clases que reflejan las tablas `Categoria`, `Transaccion`, `Presupuesto_especifico`, `Presupueto_General` e `impuesto_anual` de la base `mydb`.
+Registrar y categorizar ingresos y egresos usando clases que reflejan las tablas `Categoria`, `Transaccion`, `Presupuesto_especifico` e `impuesto_anual` de la base `mydb`.
 
 ## Requisitos
 - Python 3.11 o superior
@@ -42,9 +42,8 @@ python -m finanzas_app.check_db
 - `CategoriaRepository`: crea categorías y lista todos los registros de la tabla `categoria`.
 - `TransaccionRepository`: inserta una transacción y obtiene las transacciones de una categoría para analizar ingresos o gastos.
 - `PresupuestoEspecificoRepository`: mantiene presupuestos mensuales por categoría.
-- `PresupuestoGeneralRepository`: registra y consulta montos globales (mensuales/anuales) respetando los `CHECK` definidos en la tabla.
 - `ImpuestoAnualRepository`: guarda resúmenes fiscales anuales, registra pagos/deducciones y compara impuesto calculado vs pagado.
-- `FinancialReportRepository`: expone reportes compuestos (ahorro mensual/anual, presupuestos globales y por categoría, gastos fijos/variables/anuales, ingresos por categoría/mes/año, reporte anual consolidado).
+- `FinancialReportRepository`: expone reportes compuestos (ahorro mensual/anual, desglose por categoría de gastos e ingresos, estado de gastos fijos/variables/anuales y reporte consolidado).
 
 ## Pruebas del módulo de acceso
 El script `scripts/test_repositories.py` resuelve lo siguiente:

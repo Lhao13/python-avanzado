@@ -51,8 +51,8 @@ def _sum_by_type(year: int, month: int, tipo: str) -> Optional[float]:
 
 def _monthly_budget(year: int, month: int) -> Optional[float]:
     query = """
-    SELECT SUM(monto_total)
-    FROM presupuesto_general
+        SELECT SUM(monto)
+        FROM presupuesto_especifico
     WHERE anio = %s
       AND mes = %s
     """

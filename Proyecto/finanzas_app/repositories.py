@@ -7,7 +7,6 @@ from .models import (
     Categoria,
     ImpuestoAnual,
     PresupuestoEspecifico,
-    PresupuestoGeneral,
     Transaccion,
 )
 
@@ -106,8 +105,9 @@ class TransaccionRepository(BaseRepository):
         transaccion.id_transaccion = self._execute_write(query, params)
         return transaccion.id_transaccion or 0
 
-    def list_by_categoria(self, categoria_id: int) -> List[Transaccion]:
-        """Lista las transacciones relacionadas con una categoría."""
+    def list_by_categoria(self, categoria_id: int, year: Optional[int] = None) -> List[Transaccion]:
+        """Lista las transacciones relacionadas con una categoría, opcionalmente filtradas por año."""
+        params: list[Any] = [categoria_id]
         query = """
         SELECT
             Id_Transaccion AS id_transaccion,
@@ -118,10 +118,78 @@ class TransaccionRepository(BaseRepository):
             description
         FROM transaccion
         WHERE Categoria_Id_Categoria = %s
+        """
+        if year is not None:
+            query += " AND YEAR(fecha) = %s"
+            params.append(year)
+        query += " ORDER BY fecha DESC"
+        rows = self._execute_read(query, tuple(params))
+        return [Transaccion(**row) for row in rows]
+
+    def list_all_with_category(self) -> List[Dict[str, Any]]:
+        """Lista todas las transacciones con el nombre de categoría asociado."""
+        query = """
+        SELECT
+            t.Id_Transaccion AS id_transaccion,
+            t.monto,
+            t.cantidad,
+            t.fecha,
+            t.description,
+            c.Id_Categoria AS categoria_id,
+            c.nombre AS categoria
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        ORDER BY t.fecha DESC
+        """
+        return self._execute_read(query)
+
+    def list_variable_transactions(self, year: int) -> List[Transaccion]:
+        """Transacciones variables realizadas durante el año requerido."""
+        params: list[Any] = [year]
+        query = """
+        SELECT
+            Id_Transaccion AS id_transaccion,
+            monto,
+            cantidad,
+            fecha,
+            Categoria_Id_Categoria AS categoria_id,
+            description
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE c.tipo = 'gasto'
+          AND c.periodicidad = 'variable'
+          AND YEAR(t.fecha) = %s
         ORDER BY fecha DESC
         """
-        rows = self._execute_read(query, (categoria_id,))
+        rows = self._execute_read(query, tuple(params))
         return [Transaccion(**row) for row in rows]
+
+    def update(self, transaccion: Transaccion) -> int:
+        """Actualiza campos editables de una transacción existente."""
+        query = """
+        UPDATE transaccion
+        SET monto = %s,
+            cantidad = %s,
+            fecha = %s,
+            description = %s
+        WHERE Id_Transaccion = %s
+        """
+        params = (
+            transaccion.monto,
+            transaccion.cantidad,
+            transaccion.fecha,
+            transaccion.description,
+            transaccion.id_transaccion,
+        )
+        return self._execute_write(query, params)
+
+    def delete(self, transaccion_id: int) -> int:
+        """Elimina una transacción por su identificador."""
+        query = """
+        DELETE FROM transaccion
+        WHERE Id_Transaccion = %s
+        """
+        return self._execute_write(query, (transaccion_id,))
 
 
 class PresupuestoEspecificoRepository(BaseRepository):
@@ -156,151 +224,74 @@ class PresupuestoEspecificoRepository(BaseRepository):
         rows = self._execute_read(query)
         return [PresupuestoEspecifico(**row) for row in rows]
 
-
-class PresupuestoGeneralRepository(BaseRepository):
-    """Operaciones sobre el presupuesto global."""
-
-    def create(self, presupuesto: PresupuestoGeneral) -> int:
-        """Inserta un registro global mensual o anual."""
-        query = """
-        INSERT INTO presupuesto_general (Id_Presupueto_General, periodo, anio, mes, monto_total)
-        VALUES (%s, %s, %s, %s, %s)
-        """
-        params = (
-            presupuesto.id_presupuesto_general,
-            presupuesto.periodo,
-            presupuesto.anio,
-            presupuesto.mes,
-            presupuesto.monto_total,
-        )
-        return self._execute_write(query, params)
-
-    def list_all(self) -> List[PresupuestoGeneral]:
-        """Lista todos los registros del presupuesto general."""
+    def list_by_month(self, year: int, month: int) -> List[Dict[str, Any]]:
         query = """
         SELECT
-            Id_Presupueto_General AS id_presupuesto_general,
-            periodo,
-            anio,
-            mes,
-            monto_total
-        FROM presupuesto_general
+            p.Id_Presupuesto AS id_presupuesto,
+            p.anio,
+            p.mes,
+            p.monto,
+            c.Id_Categoria AS categoria_id,
+            c.nombre
+        FROM presupuesto_especifico p
+        JOIN categoria c ON p.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE p.anio = %s AND p.mes = %s
+        ORDER BY c.nombre
         """
-        rows = self._execute_read(query)
-        return [PresupuestoGeneral(**row) for row in rows]
+        return self._execute_read(query, (year, month))
+
+    def delete(self, presupuesto_id: int) -> int:
+        query = """
+        DELETE FROM presupuesto_especifico
+        WHERE Id_Presupuesto = %s
+        """
+        return self._execute_write(query, (presupuesto_id,))
+
+    def list_by_month(self, year: int, month: int) -> List[Dict[str, Any]]:
+        query = """
+        SELECT
+            p.Id_Presupuesto AS id_presupuesto,
+            p.anio,
+            p.mes,
+            p.monto,
+            c.Id_Categoria AS categoria_id,
+            c.nombre
+        FROM presupuesto_especifico p
+        JOIN categoria c ON p.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE p.anio = %s AND p.mes = %s
+        ORDER BY c.nombre
+        """
+        return self._execute_read(query, (year, month))
+
+    def delete(self, presupuesto_id: int) -> int:
+        query = """
+        DELETE FROM presupuesto_especifico
+        WHERE Id_Presupuesto = %s
+        """
+        return self._execute_write(query, (presupuesto_id,))
+
 
 
 class ImpuestoAnualRepository(BaseRepository):
-    """Soporte CRUD para impuestos anuales y comparación calculado/pagado."""
+    """Operaciones mínimas sobre el impuesto anual histórico."""
 
-    def create(self, impuesto: ImpuestoAnual) -> int:
-        """Inserta o actualiza el resumen anual de impuestos."""
+    def save_paid_tax(self, anio: int, impuesto_pagado: float) -> int:
+        """Inserta o actualiza el registro del impuesto pagado por año."""
         query = """
-        INSERT INTO impuesto_anual
-            (Id_mpuesto_anual, anio, ingreso_total, gastos_deducibles, base_imponible, impuesto_calculado, impuesto_pagado, diferencia)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO impuesto_anual (anio, impuesto_pagado)
+        VALUES (%s, %s)
+        ON DUPLICATE KEY UPDATE impuesto_pagado = VALUES(impuesto_pagado)
         """
-        params = (
-            impuesto.id_impuesto_anual,
-            impuesto.anio,
-            impuesto.ingreso_total,
-            impuesto.gastos_deducibles,
-            impuesto.base_imponible,
-            impuesto.impuesto_calculado,
-            impuesto.impuesto_pagado,
-            impuesto.diferencia,
-        )
-        return self._execute_write(query, params)
+        return self._execute_write(query, (anio, impuesto_pagado))
 
-    def upsert_summary(self, impuesto: ImpuestoAnual) -> int:
-        """Guarda el resumen fiscal asegurando años únicos como clave primaria."""
+    def list_tax_payments(self) -> List[Dict[str, Any]]:
+        """Recupera los pagos de impuesto almacenados ordenados por año."""
         query = """
-        INSERT INTO impuesto_anual
-            (anio, ingreso_total, gastos_deducibles, base_imponible, impuesto_calculado, impuesto_pagado, diferencia)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ON DUPLICATE KEY UPDATE
-            ingreso_total = VALUES(ingreso_total),
-            gastos_deducibles = VALUES(gastos_deducibles),
-            base_imponible = VALUES(base_imponible),
-            impuesto_calculado = VALUES(impuesto_calculado),
-            impuesto_pagado = VALUES(impuesto_pagado),
-            diferencia = VALUES(diferencia)
-        """
-        params = (
-            impuesto.anio,
-            impuesto.ingreso_total,
-            impuesto.gastos_deducibles,
-            impuesto.base_imponible,
-            impuesto.impuesto_calculado,
-            impuesto.impuesto_pagado,
-            impuesto.diferencia,
-        )
-        return self._execute_write(query, params)
-
-    def list_all(self) -> List[ImpuestoAnual]:
-        """Retorna todos los registros de impuestos anuales."""
-        query = """
-        SELECT
-            Id_mpuesto_anual AS id_impuesto_anual,
-            anio,
-            ingreso_total,
-            gastos_deducibles,
-            base_imponible,
-            impuesto_calculado,
-            impuesto_pagado,
-            diferencia
+        SELECT anio, impuesto_pagado
         FROM impuesto_anual
+        ORDER BY anio
         """
-        rows = self._execute_read(query)
-        return [ImpuestoAnual(**row) for row in rows]
-
-    def register_paid_tax(self, anio: int, paid_amount: float) -> int:
-        """Actualiza el monto pagado para un año dado."""
-        query = """
-        UPDATE impuesto_anual
-        SET impuesto_pagado = %s
-        WHERE anio = %s
-        """
-        return self._execute_write(query, (paid_amount, anio))
-
-    def register_deductions(self, anio: int, deducibles: float) -> int:
-        """Registra el total de gastos deducibles declarados."""
-        query = """
-        UPDATE impuesto_anual
-        SET gastos_deducibles = %s
-        WHERE anio = %s
-        """
-        return self._execute_write(query, (deducibles, anio))
-
-    def fetch_summary_by_year(self, anio: int) -> Optional[Dict[str, Any]]:
-        """Obtiene los valores calculados y pagados de un año específico."""
-        query = """
-        SELECT
-            anio,
-            ingreso_total,
-            gastos_deducibles,
-            base_imponible,
-            impuesto_calculado,
-            impuesto_pagado,
-            diferencia
-        FROM impuesto_anual
-        WHERE anio = %s
-        """
-        rows = self._execute_read(query, (anio,))
-        return rows[0] if rows else None
-
-    def compare_calculated_vs_paid(self, anio: int) -> Optional[Dict[str, float]]:
-        """Devuelve la diferencia entre impuesto estimado y pagado por año."""
-        summary = self.fetch_summary_by_year(anio)
-        if not summary:
-            return None
-        return {
-            "anio": summary["anio"],
-            "calculado": summary.get("impuesto_calculado", 0.0) or 0.0,
-            "pagado": summary.get("impuesto_pagado", 0.0) or 0.0,
-            "diferencia": (summary.get("impuesto_calculado", 0.0) or 0.0)
-            - (summary.get("impuesto_pagado", 0.0) or 0.0),
-        }
+        return self._execute_read(query)
 
 
 class FinancialReportRepository(BaseRepository):
@@ -342,32 +333,6 @@ class FinancialReportRepository(BaseRepository):
         """
         return self._execute_read(query)
 
-    def get_monthly_global_budget(self, year: Optional[int] = None) -> List[Dict[str, Any]]:
-        """Suma mensual del presupuesto general."""
-        params: Sequence[Any] = ()
-        filter_clause = ""
-        if year is not None:
-            filter_clause = "WHERE anio = %s"
-            params = (year,)
-        query = f"""
-        SELECT anio, mes, SUM(monto_total) AS monto_total
-        FROM presupuesto_general
-        {filter_clause}
-        GROUP BY anio, mes
-        ORDER BY anio, mes
-        """
-        return self._execute_read(query, params)
-
-    def get_annual_global_budget(self) -> List[Dict[str, Any]]:
-        """Presupuesto agregado por año."""
-        query = """
-        SELECT anio, SUM(monto_total) AS monto_total
-        FROM presupuesto_general
-        GROUP BY anio
-        ORDER BY anio
-        """
-        return self._execute_read(query)
-
     def get_budget_by_category(self, year: Optional[int] = None) -> List[Dict[str, Any]]:
         """Presupuestos específicos con nombre de categoría."""
         params: Sequence[Any] = ()
@@ -387,6 +352,22 @@ class FinancialReportRepository(BaseRepository):
         {filter_clause}
         ORDER BY p.anio, p.mes, c.nombre
         """
+        return self._execute_read(query, params)
+
+    def budget_by_category_for_month(self, year: int, month: int) -> List[Dict[str, Any]]:
+        """Detalle de presupuestos específicos para el mes y año dados."""
+        query = """
+        SELECT
+            c.Id_Categoria AS categoria_id,
+            c.nombre,
+            p.monto
+        FROM presupuesto_especifico p
+        JOIN categoria c ON p.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE p.anio = %s
+          AND p.mes = %s
+        ORDER BY c.nombre
+        """
+        params: Sequence[Any] = (year, month)
         return self._execute_read(query, params)
 
     def _expense_query(
@@ -415,6 +396,184 @@ class FinancialReportRepository(BaseRepository):
         ORDER BY total DESC
         """
         return self._execute_read(query, tuple(params))
+
+    def _sum_amount_by_type(self, year: int, tipo: str, month: Optional[int] = None) -> float:
+        """Suma total para un tipo de transacción en el período indicado."""
+        filters = ["c.tipo = %s", "YEAR(t.fecha) = %s"]
+        params: list[Any] = [tipo, year]
+        if month is not None:
+            filters.append("MONTH(t.fecha) = %s")
+            params.append(month)
+        query = f"""
+        SELECT SUM(t.monto) AS total
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE {' AND '.join(filters)}
+        """
+        rows = self._execute_read(query, tuple(params))
+        if not rows:
+            return 0.0
+        return float(rows[0].get("total") or 0.0)
+
+    def total_expenses(self, year: int, month: Optional[int] = None) -> float:
+        """Totaliza los gastos del período."""
+        return self._sum_amount_by_type(year, "gasto", month)
+
+    def total_incomes(self, year: int, month: Optional[int] = None) -> float:
+        """Totaliza los ingresos del período."""
+        return self._sum_amount_by_type(year, "ingreso", month)
+
+    def expenses_by_category(self, year: int, month: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Lista de gastos agrupados por categoría para el año (y mes opcional)."""
+        filters = ["c.tipo = 'gasto'", "YEAR(t.fecha) = %s"]
+        params: list[Any] = [year]
+        if month is not None:
+            filters.append("MONTH(t.fecha) = %s")
+            params.append(month)
+        query = f"""
+        SELECT
+            c.nombre AS categoria,
+            SUM(t.monto) AS total
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE {' AND '.join(filters)}
+        GROUP BY c.Id_Categoria, c.nombre
+        ORDER BY total DESC
+        """
+        return self._execute_read(query, tuple(params))
+
+    def incomes_by_category_for_month(self, year: int, month: int) -> List[Dict[str, Any]]:
+        """Ingresa los totales por categoría dentro del mes indicado."""
+        query = """
+        SELECT
+            c.nombre AS categoria,
+            SUM(t.monto) AS total
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE c.tipo = 'ingreso'
+          AND YEAR(t.fecha) = %s
+          AND MONTH(t.fecha) = %s
+        GROUP BY c.Id_Categoria, c.nombre
+        ORDER BY total DESC
+        """
+        return self._execute_read(query, (year, month))
+
+    def expenses_by_category_by_month(self, year: int) -> List[Dict[str, Any]]:
+        """Agrupa los gastos por mes y categoría para montar gráficos apilados."""
+        query = """
+        SELECT
+            MONTH(t.fecha) AS mes,
+            c.nombre AS categoria,
+            SUM(t.monto) AS total
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE c.tipo = 'gasto'
+          AND YEAR(t.fecha) = %s
+        GROUP BY mes, c.Id_Categoria, c.nombre
+        ORDER BY mes, total DESC
+        """
+        return self._execute_read(query, (year,))
+
+    def daily_totals_by_type(self, year: int, month: int, tipo: str) -> List[Dict[str, Any]]:
+        """Totales diarios para un tipo de transacción dentro de un mes."""
+        query = """
+        SELECT
+            DATE(t.fecha) AS fecha,
+            SUM(t.monto) AS total
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE YEAR(t.fecha) = %s
+          AND MONTH(t.fecha) = %s
+          AND c.tipo = %s
+        GROUP BY DATE(t.fecha)
+        ORDER BY DATE(t.fecha)
+        """
+        return self._execute_read(query, (year, month, tipo))
+
+    def weekly_expense_heatmap(self, year: int, month: int) -> List[Dict[str, Any]]:
+        """Datos para representar el gasto por semana y día de la semana."""
+        query = """
+        SELECT
+            WEEK(t.fecha, 1) AS semana,
+            DAYOFWEEK(t.fecha) AS dia_semana,
+            SUM(t.monto) AS total
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE YEAR(t.fecha) = %s
+          AND MONTH(t.fecha) = %s
+          AND c.tipo = 'gasto'
+        GROUP BY semana, dia_semana
+        ORDER BY semana, dia_semana
+        """
+        return self._execute_read(query, (year, month))
+
+    def monthly_expense_totals(self, year: int) -> List[Dict[str, Any]]:
+        """Totales de gastos por cada mes del año para el gráfico anual."""
+        query = """
+        SELECT
+            MONTH(t.fecha) AS mes,
+            SUM(t.monto) AS total
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE c.tipo = 'gasto'
+          AND YEAR(t.fecha) = %s
+        GROUP BY mes
+        ORDER BY mes
+        """
+        return self._execute_read(query, (year,))
+
+    def fixed_expenses_by_year(self, year: int) -> List[Dict[str, Any]]:
+        """Totales por categoría para los gastos fijos dentro del año."""
+        return self._expense_query("mensual", year)
+
+    def fixed_monthly_expenses_by_category(self, year: int) -> List[Dict[str, Any]]:
+        """Totales mensuales por categoría de los gastos fijos del año."""
+        query = """
+        SELECT
+            MONTH(t.fecha) AS mes,
+            c.nombre,
+            SUM(t.monto) AS total
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE c.tipo = 'gasto'
+          AND c.periodicidad = 'mensual'
+          AND YEAR(t.fecha) = %s
+        GROUP BY mes, c.nombre
+        ORDER BY mes, c.nombre
+        """
+        return self._execute_read(query, (year,))
+    def variable_monthly_totals(self, year: int) -> List[Dict[str, Any]]:
+        """Suma mensual de gastos variables para el año indicado."""
+        query = """
+        SELECT
+            MONTH(t.fecha) AS mes,
+            SUM(t.monto) AS total
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE c.tipo = 'gasto'
+          AND c.periodicidad = 'variable'
+          AND YEAR(t.fecha) = %s
+        GROUP BY MONTH(t.fecha)
+        ORDER BY mes
+        """
+        return self._execute_read(query, (year,))
+        
+    def variable_monthly_totals_by_category(self, year: int, category_id: int) -> List[Dict[str, Any]]:
+        """Suma mensual de gastos variables para una categoría específica."""
+        query = """
+        SELECT
+            MONTH(t.fecha) AS mes,
+            SUM(t.monto) AS total
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE c.tipo = 'gasto'
+          AND c.periodicidad = 'variable'
+          AND c.Id_Categoria = %s
+          AND YEAR(t.fecha) = %s
+        GROUP BY MONTH(t.fecha)
+        ORDER BY mes
+        """
+        return self._execute_read(query, (category_id, year))
 
     def monthly_fixed_expenses(self, year: Optional[int] = None, month: Optional[int] = None) -> List[Dict[str, Any]]:
         """Gastos categorizados como fijos mensuales."""
@@ -485,12 +644,32 @@ class FinancialReportRepository(BaseRepository):
         """
         return self._execute_read(query)
 
+    def monthly_incomes_by_category(self, year: Optional[int] = None) -> List[Dict[str, Any]]:
+        """Totaliza ingresos mensuales por categoría."""
+        params: Sequence[Any] = ()
+        clause = ""
+        if year is not None:
+            clause = "AND YEAR(t.fecha) = %s"
+            params = (year,)
+        query = f"""
+        SELECT
+            DATE_FORMAT(t.fecha, '%Y-%m') AS periodo,
+            c.nombre,
+            SUM(t.monto) AS total
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE c.tipo = 'ingreso'
+        {clause}
+        GROUP BY periodo, c.nombre
+        ORDER BY periodo, c.nombre
+        """
+        return self._execute_read(query, params)
+
     def annual_report(self, anio: int) -> Dict[str, Any]:
         """Compone un reporte anual integrando todas las métricas."""
         return {
             "savings": self.monthly_savings(year=anio),
             "budgets": {
-                "monthly": self.get_monthly_global_budget(year=anio),
                 "category": self.get_budget_by_category(year=anio),
             },
             "expenses": {

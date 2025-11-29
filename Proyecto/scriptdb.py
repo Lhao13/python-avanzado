@@ -50,14 +50,6 @@ def insert_presupuesto_especifico(anio, mes, monto, categoria_id):
     conn.commit()
 
 
-def insert_presupuesto_general(periodo, anio, mes, monto_total):
-    query = """
-        INSERT INTO Presupuesto_General (periodo, anio, mes, monto_total)
-        VALUES (%s, %s, %s, %s)
-    """
-    cursor.execute(query, (periodo, anio, mes, monto_total))
-    conn.commit()
-
 
 def insert_impuesto_anual(anio, ingreso_total, gastos_deducibles, base_imponible, impuesto_calculado, impuesto_pagado, diferencia):
     query = """
@@ -186,17 +178,6 @@ for cat in ["Comida", "Transporte", "Ocio"]:
 
 print("Presupuestos específicos insertados.")
 
-
-
-# ============================================
-#  PRESUPUESTOS GENERALES (mensual + anual)
-# ============================================
-print("\nInsertando presupuestos generales...")
-
-insert_presupuesto_general("mensual", 2024, None, 2000)
-insert_presupuesto_general("anual", 2024, None, 25000)
-
-print("Presupuestos generales insertados.")
 
 
 

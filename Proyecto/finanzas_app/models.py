@@ -33,22 +33,8 @@ class PresupuestoEspecifico:
     categoria_id: Optional[int] = None
 
 
-@dataclass
-class PresupuestoGeneral:
-    id_presupuesto_general: Optional[int] = None
-    periodo: Optional[str] = None
-    anio: Optional[int] = None
-    mes: Optional[int] = None
-    monto_total: Optional[float] = None
-
 
 @dataclass
 class ImpuestoAnual:
-    id_impuesto_anual: Optional[int] = None
     anio: Optional[int] = None
-    ingreso_total: Optional[float] = None
-    gastos_deducibles: Optional[float] = None
-    base_imponible: Optional[float] = None
-    impuesto_calculado: Optional[float] = None
     impuesto_pagado: Optional[float] = None
-    diferencia: Optional[float] = None

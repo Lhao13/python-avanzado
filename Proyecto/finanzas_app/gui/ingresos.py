@@ -9,7 +9,11 @@ from typing import Any, Sequence
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.figure import Figure
+
 from ..db.connection import DatabaseConnection
+from ..logic.graficos import annual_incomes_figure, monthly_incomes_stacked_figure
 from ..repositories import FinancialReportRepository
 
 
@@ -46,13 +50,31 @@ class IngresosFrame(tk.Frame):
         control_frame.pack(fill="x", pady=(0, 12))
         self._build_monthly_controls(control_frame)
 
-        self._monthly_tree = _make_tree(self, "Ingresos mensuales", ("Mes", "Total"))
-        self._annual_tree = _make_tree(self, "Ingresos anuales", ("Año", "Total"))
-        self._category_tree = _make_tree(self, "Ingresos por categoría", ("Categoría", "Total"))
+        body_frame = tk.Frame(self)
+        body_frame.pack(fill="both", expand=True)
+        body_frame.columnconfigure(0, weight=1)
+        body_frame.columnconfigure(1, weight=1)
+
+        tree_frame = tk.Frame(body_frame)
+        tree_frame.grid(row=0, column=0, sticky="nsew")
+        chart_frame = tk.Frame(body_frame)
+        chart_frame.grid(row=0, column=1, sticky="nsew")
+
+        self._monthly_tree = _make_tree(tree_frame, "Ingresos mensuales", ("Mes", "Total"))
+        self._annual_tree = _make_tree(tree_frame, "Ingresos anuales", ("Año", "Total"))
+        self._category_tree = _make_tree(tree_frame, "Ingresos por categoría", ("Categoría", "Total"))
+
+        self._monthly_chart_canvas: FigureCanvasTkAgg | None = None
+        self._annual_chart_canvas: FigureCanvasTkAgg | None = None
+        self._monthly_chart_container: tk.Frame | None = None
+        self._annual_chart_container: tk.Frame | None = None
+        self._build_charts_section(chart_frame)
 
         self._refresh_monthly()
         self._refresh_annual()
         self._refresh_category()
+        self._refresh_monthly_chart()
+        self._refresh_annual_chart()
 
     def _initial_year(self) -> int:
         return datetime.now().year
@@ -76,6 +98,7 @@ class IngresosFrame(tk.Frame):
         rows = self._report.monthly_incomes(year=year)
         month_values: dict[str, float] = {row["periodo"]: row.get("total", 0.0) for row in rows}
         self._populate_monthly(month_values, year)
+        self._refresh_monthly_chart(year)
 
     def _populate_monthly(self, month_values: dict[str, float], year: int) -> None:
         for child in self._monthly_tree.get_children():
@@ -94,6 +117,57 @@ class IngresosFrame(tk.Frame):
     def _refresh_category(self) -> None:
         rows = self._report.incomes_by_category()
         self._populate_tree(self._category_tree, rows, "nombre")
+
+    def _build_charts_section(self, parent: tk.Frame) -> None:
+        frame = tk.Frame(parent)
+        frame.pack(fill="both", expand=True)
+        frame.columnconfigure(0, weight=1)
+
+        monthly_frame = ttk.LabelFrame(frame, text="Ingresos mensuales por categoría", padding=8)
+        monthly_frame.pack(fill="both", expand=True, pady=(0, 6))
+        self._monthly_chart_container = tk.Frame(monthly_frame)
+        self._monthly_chart_container.pack(fill="both", expand=True)
+        self._monthly_chart_container.bind("<Configure>", lambda _: self._refresh_monthly_chart())
+
+        annual_frame = ttk.LabelFrame(frame, text="Ingresos anuales", padding=8)
+        annual_frame.pack(fill="both", expand=True)
+        self._annual_chart_container = tk.Frame(annual_frame)
+        self._annual_chart_container.pack(fill="both", expand=True)
+        self._annual_chart_container.bind("<Configure>", lambda _: self._refresh_annual_chart())
+
+    def _refresh_monthly_chart(self, year_override: int | None = None) -> None:
+        try:
+            year = year_override if year_override is not None else int(self._monthly_year_var.get())
+        except ValueError:
+            return
+        if not self._monthly_chart_container:
+            return
+        figure = monthly_incomes_stacked_figure(year)
+        self._monthly_chart_canvas = self._render_figure_on_container(
+            self._monthly_chart_container, figure, self._monthly_chart_canvas
+        )
+
+    def _refresh_annual_chart(self) -> None:
+        if not self._annual_chart_container:
+            return
+        figure = annual_incomes_figure()
+        self._annual_chart_canvas = self._render_figure_on_container(
+            self._annual_chart_container, figure, self._annual_chart_canvas
+        )
+
+    def _render_figure_on_container(
+        self,
+        container: tk.Misc,
+        figure: Figure,
+        existing: FigureCanvasTkAgg | None,
+    ) -> FigureCanvasTkAgg:
+        if existing:
+            existing.get_tk_widget().destroy()
+        canvas = FigureCanvasTkAgg(figure, master=container)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+        # Mantiene la referencia para poder refrescar el lienzo cuando se redimensiona.
+        return canvas
 
     def _populate_tree(self, tree: ttk.Treeview, rows: Sequence[dict[str, Any]], label_key: str) -> None:
         for child in tree.get_children():

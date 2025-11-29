@@ -13,13 +13,11 @@ from finanzas_app import (
     Categoria,
     ImpuestoAnual,
     PresupuestoEspecifico,
-    PresupuestoGeneral,
     Transaccion,
     CategoriaRepository,
     FinancialReportRepository,
     ImpuestoAnualRepository,
     PresupuestoEspecificoRepository,
-    PresupuestoGeneralRepository,
     TransaccionRepository,
     DatabaseConnection,
 )
@@ -49,7 +47,6 @@ def main() -> None:
     categoria_repo = CategoriaRepository(connection)
     trans_repo = TransaccionRepository(connection)
     presupuesto_especifico_repo = PresupuestoEspecificoRepository(connection)
-    presupuesto_general_repo = PresupuestoGeneralRepository(connection)
     impuesto_repo = ImpuestoAnualRepository(connection)
     report_repo = FinancialReportRepository(connection)
 
@@ -80,7 +77,6 @@ def main() -> None:
     categorias = [income_cat, fixed_cat, variable_cat, anual_cat]
 
     transacciones: list[Transaccion] = []
-    presupuesto_general_id: Optional[int] = None
     impuesto_id: Optional[int] = None
     try:
         for categoria in categorias:
@@ -121,15 +117,6 @@ def main() -> None:
             trans_repo.create(transaccion)
         print("Transacciones insertadas:", [t.id_transaccion for t in transacciones])
 
-        presupuesto_general = PresupuestoGeneral(
-            periodo="mensual",
-            anio=2019,
-            mes=11,
-            monto_total=5000.0,
-        )
-        presupuesto_general_id = presupuesto_general_repo.create(presupuesto_general)
-        print("Presupuesto general creado")
-
         for cat in (fixed_cat, variable_cat):
             presupuesto_especifico = PresupuestoEspecifico(
                 anio=2025,
@@ -154,8 +141,6 @@ def main() -> None:
 
         print("Ahorro mensual:", report_repo.monthly_savings(year=2025))
         print("Ahorro anual:", report_repo.annual_savings())
-        print("Presupuesto mensual global:", report_repo.get_monthly_global_budget(year=2025))
-        print("Presupuesto anual global:", report_repo.get_annual_global_budget())
         print("Presupuesto por categoria:", report_repo.get_budget_by_category(year=2025))
         print("Gastos fijos mensuales:", report_repo.monthly_fixed_expenses(year=2025))
         print("Gastos variables:", report_repo.variable_expenses(year=2025))
@@ -175,12 +160,6 @@ def main() -> None:
                 "DELETE FROM presupuesto_especifico WHERE Categoria_Id_Categoria IN (%s, %s)",
                 (fixed_cat.id_categoria, variable_cat.id_categoria),
             )
-            if presupuesto_general_id:
-                execute_raw(
-                    connection,
-                    "DELETE FROM presupuesto_general WHERE Id_Presupueto_General = %s",
-                    (presupuesto_general_id,),
-                )
             if impuesto_id:
                 execute_raw(
                     connection,

@@ -4,14 +4,12 @@ from .models import (
     Categoria,
     Transaccion,
     PresupuestoEspecifico,
-    PresupuestoGeneral,
     ImpuestoAnual,
 )
 from .repositories import (
     CategoriaRepository,
     TransaccionRepository,
     PresupuestoEspecificoRepository,
-    PresupuestoGeneralRepository,
     ImpuestoAnualRepository,
     FinancialReportRepository,
 )
@@ -23,12 +21,10 @@ __all__ = [
     "Categoria",
     "Transaccion",
     "PresupuestoEspecifico",
-    "PresupuestoGeneral",
     "ImpuestoAnual",
     "CategoriaRepository",
     "TransaccionRepository",
     "PresupuestoEspecificoRepository",
-    "PresupuestoGeneralRepository",
     "ImpuestoAnualRepository",
     "FinancialReportRepository",
     "TransactionApp",

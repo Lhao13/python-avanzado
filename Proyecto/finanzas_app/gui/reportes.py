@@ -1,15 +1,30 @@
-"""Panel para reportes financieros."""
+"""Panel para generar reportes financieros en PDF."""
 
 from __future__ import annotations
 
 from calendar import month_name
 from datetime import datetime
-from typing import List
+from typing import Callable, List, Tuple
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, filedialog, messagebox
+
+from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.figure import Figure
+from matplotlib import pyplot as plt
 
 from ..db.connection import DatabaseConnection
+from ..logic.graficos import (
+    annual_cumulative_savings_figure,
+    annual_expense_boxplot_figure,
+    annual_expense_by_category_stacked_figure,
+    annual_expense_line_figure,
+    monthly_daily_expense_line_figure,
+    monthly_expense_heatmap_figure,
+    monthly_income_vs_expense_stacked_figure,
+    monthly_spending_bar_figure,
+    monthly_spending_pie_figure,
+)
 from ..repositories import FinancialReportRepository
 
 
@@ -19,85 +34,63 @@ def _format_money(value: float | None) -> str:
     return f"${value:,.2f}"
 
 
+def _today_str() -> str:
+    return datetime.now().strftime("%Y-%m-%d %H:%M")
+
+
 class ReportesFrame(tk.Frame):
-    """Panel que genera reportes anuales o mensuales con los datos completos."""
+    """Sección dedicada a exportar reportes mensuales y anuales."""
 
     def __init__(self, parent: tk.Misc) -> None:
         super().__init__(parent, padx=12, pady=12)
         self._repo = FinancialReportRepository(DatabaseConnection())
-        self._annual_year_var = tk.StringVar()
         self._monthly_year_var = tk.StringVar()
         self._monthly_month_var = tk.StringVar(value=month_name[datetime.now().month])
+        self._annual_year_var = tk.StringVar()
 
         tk.Label(self, text="REPORTES", font=(None, 14, "bold")).pack(anchor="w")
-        self._build_annual_section()
         self._build_monthly_section()
-        self._build_transactions_table()
+        self._build_annual_section()
         self._refresh_available_years()
 
-    def _build_annual_section(self) -> None:
-        frame = tk.LabelFrame(self, text="Reporte anual", padx=8, pady=8)
-        frame.pack(fill="x", pady=(8, 4))
-        tk.Label(frame, text="Muestra todas las transacciones de un año.").grid(row=0, column=0, sticky="w")
-        self._annual_year_combo = ttk.Combobox(frame, textvariable=self._annual_year_var, state="readonly", width=12)
-        self._annual_year_combo.grid(row=1, column=0, pady=(6, 0))
-        ttk.Button(frame, text="Generar reporte anual", command=self._generate_annual_report).grid(row=1, column=1, padx=(12, 0), pady=(6, 0))
-
     def _build_monthly_section(self) -> None:
-        frame = tk.LabelFrame(self, text="Reporte mensual", padx=8, pady=8)
-        frame.pack(fill="x", pady=(4, 8))
-        tk.Label(frame, text="Selecciona año y mes para ver el detalle.").grid(row=0, column=0, columnspan=3, sticky="w")
-        tk.Label(frame, text="Año").grid(row=1, column=0, sticky="w", pady=(6, 0))
-        self._monthly_year_combo = ttk.Combobox(frame, textvariable=self._monthly_year_var, state="readonly", width=10)
+        section = ttk.LabelFrame(self, text="Reporte mensual", padding=8)
+        section.pack(fill="x", pady=(8, 4))
+        tk.Label(section, text="Exporta un PDF con indicadores, listas y gráficos del mes seleccionado.").grid(
+            row=0, column=0, columnspan=3, sticky="w"
+        )
+        tk.Label(section, text="Año").grid(row=1, column=0, sticky="w", pady=(6, 0))
+        self._monthly_year_combo = ttk.Combobox(section, textvariable=self._monthly_year_var, state="readonly", width=10)
         self._monthly_year_combo.grid(row=1, column=1, pady=(6, 0))
-        tk.Label(frame, text="Mes").grid(row=2, column=0, sticky="w")
-        month_values = [month_name[i] for i in range(1, 13)]
-        ttk.Combobox(frame, textvariable=self._monthly_month_var, state="readonly", values=month_values, width=12).grid(row=2, column=1)
-        ttk.Button(frame, text="Generar reporte mensual", command=self._generate_monthly_report).grid(row=3, column=0, columnspan=2, pady=(8, 0))
+        tk.Label(section, text="Mes").grid(row=2, column=0, sticky="w")
+        month_combo = ttk.Combobox(section, textvariable=self._monthly_month_var, state="readonly")
+        month_combo["values"] = [month_name[i] for i in range(1, 13)]
+        month_combo.grid(row=2, column=1, pady=(0, 4))
+        ttk.Button(section, text="Generar reporte mensual", command=self._generate_monthly_report).grid(
+            row=3, column=0, columnspan=2, pady=(8, 0)
+        )
 
-    def _build_transactions_table(self) -> None:
-        container = tk.LabelFrame(self, text="Transacciones", padx=4, pady=4)
-        container.pack(fill="both", expand=True)
-
-        columns = ("id", "fecha", "categoria", "tipo", "monto", "cantidad", "descripcion")
-        self._transactions_tree = ttk.Treeview(container, columns=columns, show="headings")
-        for column in columns:
-            anchor = "center" if column in ("id", "fecha", "tipo", "categoria") else "e"
-            heading = column.replace("_", " ").title()
-            self._transactions_tree.heading(column, text=heading)
-            self._transactions_tree.column(column, anchor=anchor, width=120)
-
-        self._transactions_tree.grid(row=0, column=0, sticky="nsew")
-        container.rowconfigure(0, weight=1)
-        container.columnconfigure(0, weight=1)
-
-        scrollbar_y = ttk.Scrollbar(container, orient="vertical", command=self._transactions_tree.yview)
-        scrollbar_y.grid(row=0, column=1, sticky="ns")
-        self._transactions_tree.configure(yscrollcommand=scrollbar_y.set)
-
-        scrollbar_x = ttk.Scrollbar(container, orient="horizontal", command=self._transactions_tree.xview)
-        scrollbar_x.grid(row=1, column=0, sticky="ew")
-        self._transactions_tree.configure(xscrollcommand=scrollbar_x.set)
+    def _build_annual_section(self) -> None:
+        section = ttk.LabelFrame(self, text="Reporte anual", padding=8)
+        section.pack(fill="x", pady=(4, 12))
+        tk.Label(section, text="Crea un archivo PDF con los indicadores globales y los gráficos del año elegido.").grid(
+            row=0, column=0, columnspan=2, sticky="w"
+        )
+        tk.Label(section, text="Año").grid(row=1, column=0, sticky="w", pady=(6, 0))
+        self._annual_year_combo = ttk.Combobox(section, textvariable=self._annual_year_var, state="readonly", width=10)
+        self._annual_year_combo.grid(row=1, column=1, pady=(6, 0))
+        ttk.Button(section, text="Generar reporte anual", command=self._generate_annual_report).grid(
+            row=2, column=0, columnspan=2, pady=(8, 0)
+        )
 
     def _refresh_available_years(self) -> None:
-        years = self._repo.get_available_years()
-        if not years:
-            years = [datetime.now().year]
+        years = self._repo.get_available_years() or [datetime.now().year]
         values = [str(year) for year in sorted(set(years))]
-        self._annual_year_combo["values"] = values
-        self._monthly_year_combo["values"] = values
         latest = values[-1]
-        self._annual_year_var.set(latest)
+        self._monthly_year_combo["values"] = values
+        self._annual_year_combo["values"] = values
         self._monthly_year_var.set(latest)
-
-    def _generate_annual_report(self) -> None:
-        try:
-            year = int(self._annual_year_var.get())
-        except ValueError:
-            messagebox.showerror("Reportes", "Selecciona un año válido para generar el reporte anual.")
-            return
-        rows = self._repo.transactions_for_year(year)
-        self._populate_transactions(rows)
+        self._annual_year_var.set(latest)
 
     def _generate_monthly_report(self) -> None:
         try:
@@ -109,31 +102,198 @@ class ReportesFrame(tk.Frame):
         if month is None:
             messagebox.showerror("Reportes", "Selecciona un mes válido para el reporte mensual.")
             return
-        rows = self._repo.transactions_for_month(year, month)
-        self._populate_transactions(rows)
-
-    def _populate_transactions(self, rows: List[dict]) -> None:
-        for child in self._transactions_tree.get_children():
-            self._transactions_tree.delete(child)
-        if not rows:
-            self._transactions_tree.insert("", "end", values=("—", "—", "—", "—", "—", "—", "Sin datos"))
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF", "*.pdf")],
+            title="Guardar reporte mensual",
+            initialfile=f"reporte_mensual_{year}_{month}.pdf",
+        )
+        if not filename:
             return
-        for row in rows:
-            fecha = row.get("fecha")
-            fecha_str = fecha.strftime("%d/%m/%Y") if hasattr(fecha, "strftime") else (fecha or "—")
-            self._transactions_tree.insert(
-                "",
-                "end",
-                values=(
-                    row.get("id_transaccion"),
-                    fecha_str,
-                    row.get("categoria"),
-                    row.get("categoria_tipo"),
-                    _format_money(row.get("monto")),
-                    row.get("cantidad") or "—",
-                    row.get("description") or "",
-                ),
+        try:
+            self._write_monthly_pdf(filename, year, month)
+        except Exception as exc:
+            messagebox.showerror("Reportes", f"No se pudo generar el reporte: {exc}")
+            return
+        messagebox.showinfo("Reportes", f"Reporte mensual guardado en {filename}.")
+
+    def _generate_annual_report(self) -> None:
+        try:
+            year = int(self._annual_year_var.get())
+        except ValueError:
+            messagebox.showerror("Reportes", "Selecciona un año válido para el reporte anual.")
+            return
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF", "*.pdf")],
+            title="Guardar reporte anual",
+            initialfile=f"reporte_anual_{year}.pdf",
+        )
+        if not filename:
+            return
+        try:
+            self._write_annual_pdf(filename, year)
+        except Exception as exc:
+            messagebox.showerror("Reportes", f"No se pudo generar el reporte: {exc}")
+            return
+        messagebox.showinfo("Reportes", f"Reporte anual guardado en {filename}.")
+
+    def _write_monthly_pdf(self, path: str, year: int, month: int) -> None:
+        expenses_month = self._repo.total_expenses(year, month)
+        incomes_month = self._repo.total_incomes(year, month)
+        savings_month = incomes_month - expenses_month
+        expenses_month_rows = self._repo.expenses_by_category(year, month)
+        incomes_month_rows = self._repo.incomes_by_category_for_month(year, month)
+        budgets_month_rows = self._repo.budget_by_category_for_month(year, month)
+        with PdfPages(path) as pdf:
+            # The monthly summary highlights only the selected month's numbers.
+            pdf.savefig(
+                self._summary_figure(
+                    f"Reporte mensual {month_name[month]} {year}",
+                    [
+                        f"Generado: {_today_str()}",
+                        f"Gastos ({month_name[month]}): {_format_money(expenses_month)}",
+                        f"Ingresos ({month_name[month]}): {_format_money(incomes_month)}",
+                        f"Ahorro mensual: {_format_money(savings_month)}",
+                    ],
+                )
             )
+            pdf.savefig(
+                self._table_figure(
+                    "Gastos por categoría (mes)",
+                    ["Categoría", "Total"],
+                    self._table_rows_from_dicts(expenses_month_rows, ("categoria",), (_format_money,)),
+                )
+            )
+            pdf.savefig(
+                self._table_figure(
+                    "Ingresos por categoría (mes)",
+                    ["Categoría", "Total"],
+                    self._table_rows_from_dicts(incomes_month_rows, ("categoria",), (_format_money,)),
+                )
+            )
+            pdf.savefig(
+                self._table_figure(
+                    "Presupuestos específicos (mes)",
+                    ["Categoría", "Monto"],
+                    self._table_rows_from_dicts(budgets_month_rows, ("nombre",), (_format_money,)),
+                )
+            )
+            figures = [
+                monthly_spending_bar_figure(year, month),
+                monthly_spending_pie_figure(year, month),
+                monthly_daily_expense_line_figure(year, month),
+                monthly_income_vs_expense_stacked_figure(year, month),
+                monthly_expense_heatmap_figure(year, month),
+            ]
+            for figure in figures:
+                pdf.savefig(figure)
+                plt.close(figure)
+
+    def _write_annual_pdf(self, path: str, year: int) -> None:
+        expenses_year = self._repo.total_expenses(year)
+        incomes_year = self._repo.total_incomes(year)
+        savings_year = incomes_year - expenses_year
+        expenses_year_rows = self._repo.expenses_by_category(year)
+        incomes_year_rows = self._repo.incomes_by_category(year)
+        budgets_year_rows = self._repo.get_budget_by_category(year)
+        with PdfPages(path) as pdf:
+            pdf.savefig(
+                self._summary_figure(
+                    f"Reporte anual {year}",
+                    [
+                        f"Generado: {_today_str()}",
+                        f"Gastos anual: {_format_money(expenses_year)}",
+                        f"Ingresos anual: {_format_money(incomes_year)}",
+                        f"Ahorro anual: {_format_money(savings_year)}",
+                    ],
+                )
+            )
+            pdf.savefig(
+                self._table_figure(
+                    "Gastos por categoría (año)",
+                    ["Categoría", "Total"],
+                    self._table_rows_from_dicts(expenses_year_rows, ("categoria",), (_format_money,)),
+                )
+            )
+            pdf.savefig(
+                self._table_figure(
+                    "Ingresos por categoría (año)",
+                    ["Categoría", "Total"],
+                    self._table_rows_from_dicts(incomes_year_rows, ("categoria",), (_format_money,)),
+                )
+            )
+            pdf.savefig(
+                self._table_figure(
+                    "Presupuestos específicos (año)",
+                    ["Mes", "Categoría", "Monto"],
+                    [self._format_budget_row(row) for row in budgets_year_rows],
+                )
+            )
+            figures = [
+                annual_expense_line_figure(year),
+                annual_expense_by_category_stacked_figure(year),
+                annual_expense_boxplot_figure(year),
+                annual_cumulative_savings_figure(year),
+            ]
+            for figure in figures:
+                pdf.savefig(figure)
+                plt.close(figure)
+
+    def _summary_figure(self, title: str, lines: List[str]) -> Figure:
+        fig = Figure(figsize=(8.5, 11))
+        ax = fig.subplots()
+        ax.axis("off")
+        ax.text(0.5, 0.95, title, ha="center", va="top", fontsize=14)
+        for idx, line in enumerate(lines):
+            ax.text(0.05, 0.88 - idx * 0.05, line, ha="left", fontsize=10)
+        return fig
+
+    def _table_figure(self, title: str, headers: List[str], rows: List[Tuple[str, ...]], max_rows: int = 24) -> Figure:
+        fig = Figure(figsize=(8.5, 11))
+        ax = fig.subplots()
+        ax.axis("off")
+        display_rows = rows[:max_rows]
+        if not display_rows:
+            ax.text(0.5, 0.5, "Sin datos", ha="center", va="center", fontsize=11, color="#666")
+            return fig
+        table = ax.table(
+            cellText=display_rows,
+            colLabels=headers,
+            colLoc="center",
+            loc="center",
+        )
+        table.auto_set_font_size(False)
+        table.set_fontsize(8)
+        table.scale(1, 1.5)
+        if len(rows) > max_rows:
+            ax.text(0.5, 0.04, f"... y {len(rows) - max_rows} registros más", ha="center", fontsize=8)
+        ax.set_title(title)
+        return fig
+
+    def _table_rows_from_dicts(
+        self,
+        rows: List[dict],
+        key_fields: Tuple[str, ...],
+        formatters: Tuple[Callable[[float | None], str], ...],
+    ) -> List[Tuple[str, ...]]:
+        result: List[Tuple[str, ...]] = []
+        for row in rows:
+            values: List[str] = []
+            for key in key_fields:
+                values.append(str(row.get(key) or "-"))
+            for formatter in formatters:
+                total_value = row.get("total") if "total" in row else row.get("monto")
+                values.append(formatter(total_value))
+            result.append(tuple(values))
+        return result
+
+    def _format_budget_row(self, row: dict) -> Tuple[str, str, str]:
+        mes = row.get("mes")
+        mes_label = month_name[int(mes)] if mes else "-"
+        categoria = row.get("nombre") or "-"
+        monto = _format_money(row.get("monto"))
+        return (mes_label, categoria, monto)
 
     @staticmethod
     def _month_name_to_number(name: str) -> int | None:
