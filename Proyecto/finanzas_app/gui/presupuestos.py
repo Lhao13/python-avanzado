@@ -12,13 +12,14 @@ from matplotlib.figure import Figure
 from ..logic.graficos import budget_pie_figure, objective_comparison_figure
 from ..models import Categoria, PresupuestoEspecifico
 from ..repositories import CategoriaRepository, PresupuestoEspecificoRepository
+from .theme import Theme
 
 
 class PresupuestosFrame(tk.Frame):
     """Gestor de objetivos de gasto por categoría y sus comparativas."""
 
     def __init__(self, parent: tk.Misc) -> None:
-        super().__init__(parent, padx=24, pady=24)
+        super().__init__(parent, padx=24, pady=24, bg=Theme.BACKGROUND)
         self._db_connection = DatabaseConnection()
         self._categoria_repo = CategoriaRepository(self._db_connection)
         self._presupuesto_especifico_repo = PresupuestoEspecificoRepository(self._db_connection)
@@ -52,45 +53,119 @@ class PresupuestosFrame(tk.Frame):
 
     def _build_ui(self) -> None:
         self.grid_columnconfigure(0, weight=1)
-        container = tk.Frame(self)
+        # El contenedor general hereda el fondo principal del tema.
+        container = tk.Frame(self, bg=Theme.BACKGROUND)
         container.pack(fill="both", expand=True)
 
         self._build_objective_section(container).grid(row=0, column=0, sticky="ew", pady=8)
         self._build_charts_section(container).grid(row=1, column=0, sticky="nsew", pady=8)
 
-    def _build_objective_section(self, parent: tk.Frame) -> ttk.LabelFrame:
-        labelframe = ttk.LabelFrame(parent, text="Objetivos de gasto por categoría", padding=12)
+    def _build_objective_section(self, parent: tk.Frame) -> tk.LabelFrame:
+        # Este bloque destaca las meta de gasto con el color de tarjeta del tema.
+        labelframe = tk.LabelFrame(
+            parent,
+            text="Objetivos de gasto por categoría",
+            padx=12,
+            pady=12,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         combo = ttk.Combobox(labelframe, textvariable=self._objective_category_var, state="readonly")
         combo["values"] = list(self._category_lookup.keys())
         if combo["values"]:
             combo.current(0)
         self._build_row(labelframe, "Categoría", combo)
-        self._build_row(labelframe, "Año", tk.Entry(labelframe, textvariable=self._objective_year_var))
-        self._build_row(labelframe, "Mes", self._make_month_combo(labelframe, self._objective_month_var))
-        self._build_row(labelframe, "Monto", tk.Entry(labelframe, textvariable=self._objective_amount_var))
-        tk.Button(labelframe, text="Guardar objetivo", command=self._save_objective).grid(
-            row=4, column=0, columnspan=2, pady=(8, 0)
+        self._build_row(
+            labelframe,
+            "Año",
+            tk.Entry(
+                labelframe,
+                textvariable=self._objective_year_var,
+                bg=Theme.BACKGROUND,
+                fg=Theme.PRIMARY_TEXT,
+            ),
         )
+        self._build_row(labelframe, "Mes", self._make_month_combo(labelframe, self._objective_month_var))
+        self._build_row(
+            labelframe,
+            "Monto",
+            tk.Entry(
+                labelframe,
+                textvariable=self._objective_amount_var,
+                bg=Theme.BACKGROUND,
+                fg=Theme.PRIMARY_TEXT,
+            ),
+        )
+        tk.Button(
+            labelframe,
+            text="Guardar objetivo",
+            command=self._save_objective,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        ).grid(row=4, column=0, columnspan=2, pady=(8, 0))
         return labelframe
 
     def _build_row(self, parent: tk.Frame, label: str, widget: tk.Widget) -> None:
         row = parent.grid_size()[1]
-        tk.Label(parent, text=f"{label}:").grid(row=row, column=0, sticky="e", padx=(0, 6), pady=4)
+        tk.Label(
+            parent,
+            text=f"{label}:",
+            bg=Theme.CARD_BG,
+            fg=Theme.SECONDARY_TEXT,
+        ).grid(row=row, column=0, sticky="e", padx=(0, 6), pady=4)
         widget.grid(row=row, column=1, sticky="ew", pady=4)
         parent.columnconfigure(1, weight=1)
 
     def _build_charts_section(self, parent: tk.Frame) -> ttk.LabelFrame:
-        labelframe = ttk.LabelFrame(parent, text="Objetivos por periodo", padding=12)
+        labelframe = tk.LabelFrame(
+            parent,
+            text="Objetivos por periodo",
+            padx=12,
+            pady=12,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         selectors = tk.Frame(labelframe)
         selectors.pack(fill="x", pady=(0, 8))
 
-        tk.Label(selectors, text="Año:").pack(side="left", padx=(0, 4))
-        tk.Entry(selectors, textvariable=self._chart_year_var, width=6).pack(side="left")
-        tk.Label(selectors, text="Mes:").pack(side="left", padx=(8, 4))
+        tk.Label(
+            selectors,
+            text="Año:",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).pack(side="left", padx=(0, 4))
+        tk.Entry(
+            selectors,
+            textvariable=self._chart_year_var,
+            width=6,
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).pack(side="left")
+        tk.Label(
+            selectors,
+            text="Mes:",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).pack(side="left", padx=(8, 4))
         self._make_month_combo(selectors, self._chart_month_var).pack(side="left")
-        tk.Button(selectors, text="Actualizar", command=self._refresh_period_views).pack(side="right")
+        tk.Button(
+            selectors,
+            text="Actualizar",
+            command=self._refresh_period_views,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        ).pack(side="right")
 
-        list_frame = ttk.LabelFrame(labelframe, text="Objetivos del periodo", padding=(6, 6))
+        list_frame = tk.LabelFrame(
+            labelframe,
+            text="Objetivos del periodo",
+            padx=6,
+            pady=6,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         list_frame.pack(fill="both", expand=True, pady=(0, 8))
         columns = ("categoria", "monto")
         self._objectives_tree = ttk.Treeview(list_frame, columns=columns, show="headings", height=5, selectmode="browse")
@@ -103,24 +178,33 @@ class PresupuestosFrame(tk.Frame):
         tree_scroll.pack(side="right", fill="y")
         self._objectives_tree.bind("<<TreeviewSelect>>", self._on_objective_select)
 
-        btn_frame = tk.Frame(labelframe)
+        btn_frame = tk.Frame(labelframe, bg=Theme.CARD_BG)
         btn_frame.pack(fill="x", pady=(4, 8))
-        self._delete_btn = tk.Button(btn_frame, text="Eliminar objetivo seleccionado", state="disabled", command=self._delete_selected_objective)
+        self._delete_btn = tk.Button(
+            btn_frame,
+            text="Eliminar objetivo seleccionado",
+            state="disabled",
+            command=self._delete_selected_objective,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        )
         self._delete_btn.pack(side="left")
 
-        charts_container = tk.Frame(labelframe)
+        # Las columnas de gráficos respetan el fondo general para mantener jerarquía.
+        charts_container = tk.Frame(labelframe, bg=Theme.BACKGROUND)
         charts_container.pack(fill="both", expand=True)
         charts_container.columnconfigure(0, weight=1)
         charts_container.columnconfigure(1, weight=1)
 
-        pie_frame = tk.Frame(charts_container)
+        pie_frame = tk.Frame(charts_container, bg=Theme.BACKGROUND)
         pie_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-        comparison_frame = tk.Frame(charts_container)
+        comparison_frame = tk.Frame(charts_container, bg=Theme.BACKGROUND)
         comparison_frame.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
 
-        self._pie_container = tk.Frame(pie_frame)
+        self._pie_container = tk.Frame(pie_frame, bg=Theme.CARD_BG)
         self._pie_container.pack(fill="both", expand=True)
-        self._comparacion_container = tk.Frame(comparison_frame)
+        self._comparacion_container = tk.Frame(comparison_frame, bg=Theme.CARD_BG)
         self._comparacion_container.pack(fill="both", expand=True)
 
         self._pie_container.bind("<Configure>", lambda _: self._refresh_charts())

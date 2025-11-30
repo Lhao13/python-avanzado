@@ -15,6 +15,7 @@ from matplotlib.figure import Figure
 from ..db.connection import DatabaseConnection
 from ..logic.graficos import annual_incomes_figure, monthly_incomes_stacked_figure
 from ..repositories import FinancialReportRepository
+from .theme import Theme
 
 
 def _format_money(value: float | None) -> str:
@@ -24,7 +25,8 @@ def _format_money(value: float | None) -> str:
 
 
 def _make_tree(frame: tk.Frame, title: str, columns: tuple[str, ...]) -> ttk.Treeview:
-    labelframe = ttk.LabelFrame(frame, text=title, padding=12)
+    # Cada tabla se envuelve en una tarjeta del tema para mantener coherencia.
+    labelframe = tk.LabelFrame(frame, text=title, padx=12, pady=12, bg=Theme.CARD_BG, fg=Theme.PRIMARY_TEXT)
     tree = ttk.Treeview(labelframe, columns=columns, show="headings", height=8)
     for col in columns:
         tree.heading(col, text=col)
@@ -38,7 +40,7 @@ class IngresosFrame(tk.Frame):
     """Panel con los reportes mensuales, anuales y por categoría."""
 
     def __init__(self, parent: tk.Misc) -> None:
-        super().__init__(parent, padx=12, pady=12)
+        super().__init__(parent, padx=12, pady=12, bg=Theme.BACKGROUND)
         self._report = FinancialReportRepository(DatabaseConnection())
         self._monthly_year_var = tk.StringVar(value=str(self._initial_year()))
         self._available_years = self._report.get_available_years() or [self._initial_year()]
@@ -46,18 +48,19 @@ class IngresosFrame(tk.Frame):
             self._available_years.append(self._initial_year())
         self._available_years = sorted(set(self._available_years))
 
-        control_frame = tk.Frame(self)
+        # Mantiene el fondo principal del tema para los controles.
+        control_frame = tk.Frame(self, bg=Theme.BACKGROUND)
         control_frame.pack(fill="x", pady=(0, 12))
         self._build_monthly_controls(control_frame)
 
-        body_frame = tk.Frame(self)
+        body_frame = tk.Frame(self, bg=Theme.BACKGROUND)
         body_frame.pack(fill="both", expand=True)
         body_frame.columnconfigure(0, weight=1)
         body_frame.columnconfigure(1, weight=1)
 
-        tree_frame = tk.Frame(body_frame)
+        tree_frame = tk.Frame(body_frame, bg=Theme.BACKGROUND)
         tree_frame.grid(row=0, column=0, sticky="nsew")
-        chart_frame = tk.Frame(body_frame)
+        chart_frame = tk.Frame(body_frame, bg=Theme.BACKGROUND)
         chart_frame.grid(row=0, column=1, sticky="nsew")
 
         self._monthly_tree = _make_tree(tree_frame, "Ingresos mensuales", ("Mes", "Total"))
@@ -80,13 +83,27 @@ class IngresosFrame(tk.Frame):
         return datetime.now().year
 
     def _build_monthly_controls(self, parent: tk.Frame) -> None:
-        frame = tk.LabelFrame(parent, text="Mensuales", padx=8, pady=6)
+        frame = tk.LabelFrame(
+            parent,
+            text="Mensuales",
+            padx=8,
+            pady=6,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         frame.pack(side="left", padx=6, fill="x", expand=True)
-        tk.Label(frame, text="Año").grid(row=0, column=0, sticky="w")
+        tk.Label(frame, text="Año", bg=Theme.CARD_BG, fg=Theme.PRIMARY_TEXT).grid(row=0, column=0, sticky="w")
         combo = ttk.Combobox(frame, textvariable=self._monthly_year_var, state="readonly", width=8)
         combo["values"] = [str(year) for year in self._available_years]
         combo.grid(row=1, column=0, padx=(0, 8))
-        tk.Button(frame, text="Actualizar", command=self._refresh_monthly).grid(row=1, column=1)
+        tk.Button(
+            frame,
+            text="Actualizar",
+            command=self._refresh_monthly,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        ).grid(row=1, column=1)
         # Este control solo afecta el reporte mensual.
 
     def _refresh_monthly(self) -> None:
@@ -119,19 +136,33 @@ class IngresosFrame(tk.Frame):
         self._populate_tree(self._category_tree, rows, "nombre")
 
     def _build_charts_section(self, parent: tk.Frame) -> None:
-        frame = tk.Frame(parent)
+        frame = tk.Frame(parent, bg=Theme.BACKGROUND)
         frame.pack(fill="both", expand=True)
         frame.columnconfigure(0, weight=1)
 
-        monthly_frame = ttk.LabelFrame(frame, text="Ingresos mensuales por categoría", padding=8)
+        monthly_frame = tk.LabelFrame(
+            frame,
+            text="Ingresos mensuales por categoría",
+            padx=8,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         monthly_frame.pack(fill="both", expand=True, pady=(0, 6))
-        self._monthly_chart_container = tk.Frame(monthly_frame)
+        self._monthly_chart_container = tk.Frame(monthly_frame, bg=Theme.CARD_BG)
         self._monthly_chart_container.pack(fill="both", expand=True)
         self._monthly_chart_container.bind("<Configure>", lambda _: self._refresh_monthly_chart())
 
-        annual_frame = ttk.LabelFrame(frame, text="Ingresos anuales", padding=8)
+        annual_frame = tk.LabelFrame(
+            frame,
+            text="Ingresos anuales",
+            padx=8,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         annual_frame.pack(fill="both", expand=True)
-        self._annual_chart_container = tk.Frame(annual_frame)
+        self._annual_chart_container = tk.Frame(annual_frame, bg=Theme.CARD_BG)
         self._annual_chart_container.pack(fill="both", expand=True)
         self._annual_chart_container.bind("<Configure>", lambda _: self._refresh_annual_chart())
 

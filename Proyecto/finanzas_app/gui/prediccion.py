@@ -11,26 +11,64 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 from ..logic.modelo import predict_future_expenses
+from .theme import Theme
 
 
 class PrediccionFrame(tk.Frame):
     """Interfaz que permite invocar el modelo de predicción y ver su gráfico."""
 
     def __init__(self, parent: tk.Misc) -> None:
-        super().__init__(parent, padx=18, pady=18)
-        tk.Label(self, text="Predicción de gastos", font=(None, 14, "bold")).pack(anchor="w")
-        tk.Label(self, text="Obtén una estimación de los próximos meses basada en tu historial.").pack(anchor="w", pady=(0, 12))
+        super().__init__(parent, padx=18, pady=18, bg=Theme.BACKGROUND)
+        tk.Label(
+            self,
+            text="Predicción de gastos",
+            font=(None, 14, "bold"),
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).pack(anchor="w")
+        tk.Label(
+            self,
+            text="Obtén una estimación de los próximos meses basada en tu historial.",
+            bg=Theme.BACKGROUND,
+            fg=Theme.SECONDARY_TEXT,
+        ).pack(anchor="w", pady=(0, 12))
 
-        self._status_label = tk.Label(self, text="Haz clic en el botón para generar la predicción.", fg="#555")
+        self._status_label = tk.Label(
+            self,
+            text="Haz clic en el botón para generar la predicción.",
+            fg=Theme.SECONDARY_TEXT,
+            bg=Theme.BACKGROUND,
+        )
         self._status_label.pack(anchor="w", pady=(0, 12))
 
-        btn = tk.Button(self, text="Generar predicción", command=self._generate_prediction)
+        btn = tk.Button(
+            self,
+            text="Generar predicción",
+            command=self._generate_prediction,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        )
         btn.pack(anchor="w")
 
-        self._chart_container = tk.Frame(self, bd=1, relief="solid", padx=6, pady=6)
+        # El rectángulo que contiene el gráfico se pinta con el color de tarjeta para evitar contrastes.
+        self._chart_container = tk.Frame(
+            self,
+            bd=1,
+            relief="solid",
+            padx=6,
+            pady=6,
+            bg=Theme.CARD_BG,
+        )
         self._chart_container.pack(fill="both", expand=True, pady=(12, 0))
         self._canvas: Optional[FigureCanvasTkAgg] = None
-        self._total_label = tk.Label(self, text="", font=(None, 11, "bold"))
+        self._total_label = tk.Label(
+            self,
+            text="",
+            font=(None, 11, "bold"),
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        )
         self._total_label.pack(anchor="w", pady=(8, 0))
 
     def _clear_chart(self) -> None:

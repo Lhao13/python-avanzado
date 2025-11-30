@@ -16,6 +16,7 @@ from ..logic.graficos import (
     variable_month_pie_figure,
 )
 from ..repositories import CategoriaRepository, FinancialReportRepository, TransaccionRepository
+from .theme import Theme
 
 
 def _format_money(value: float | None) -> str:
@@ -25,7 +26,8 @@ def _format_money(value: float | None) -> str:
 
 
 def _make_tree(frame: tk.Frame, title: str, columns: tuple[str, ...]) -> ttk.Treeview:
-    labelframe = ttk.LabelFrame(frame, text=title, padding=12)
+    # Agrupamos cada tabla en una tarjeta temática para visibilidad.
+    labelframe = tk.LabelFrame(frame, text=title, padx=12, pady=12, bg=Theme.CARD_BG, fg=Theme.PRIMARY_TEXT)
     tree = ttk.Treeview(labelframe, columns=columns, show="headings", height=6)
     for col in columns:
         tree.heading(col, text=col)
@@ -39,9 +41,9 @@ class GastosFrame(tk.Frame):
     """Panel con secciones para gastos fijos, variables y por categoría."""
 
     def __init__(self, parent: tk.Misc) -> None:
-        super().__init__(parent, padx=12, pady=12)
+        super().__init__(parent, padx=12, pady=12, bg=Theme.BACKGROUND)
         # La vista completa se dibuja dentro de un canvas desplazable para poder navegar el panel.
-        self._canvas = tk.Canvas(self, borderwidth=0, highlightthickness=0)
+        self._canvas = tk.Canvas(self, borderwidth=0, highlightthickness=0, bg=Theme.BACKGROUND)
         self._scrollbar = ttk.Scrollbar(self, orient="vertical", command=self._canvas.yview)
         self._canvas.configure(yscrollcommand=self._scrollbar.set)
         self._canvas.pack(side="left", fill="both", expand=True)
@@ -66,30 +68,31 @@ class GastosFrame(tk.Frame):
         self._category_catalog = {cat.nombre: cat.id_categoria for cat in categories}
         self._category_var.set("Todas")
 
-        self._fixed_chart_container: ttk.Frame | None = None
+        self._fixed_chart_container: tk.Frame | None = None
         self._fixed_chart_canvas: FigureCanvasTkAgg | None = None
-        self._variable_month_chart_container: ttk.Frame | None = None
+        self._variable_month_chart_container: tk.Frame | None = None
         self._variable_month_chart_canvas: FigureCanvasTkAgg | None = None
-        self._variable_year_chart_container: ttk.Frame | None = None
+        self._variable_year_chart_container: tk.Frame | None = None
         self._variable_year_chart_canvas: FigureCanvasTkAgg | None = None
 
-        control_frame = tk.Frame(self._content_frame)
+        # El fondo del canvas se mantiene coherente con el tema principal.
+        control_frame = tk.Frame(self._content_frame, bg=Theme.BACKGROUND)
         control_frame.pack(fill="x", pady=(0, 12))
         self._build_year_selector(control_frame)
-        controls_frame = tk.Frame(control_frame)
+        controls_frame = tk.Frame(control_frame, bg=Theme.BACKGROUND)
         controls_frame.pack(side="left", fill="x", expand=True, pady=(6, 0))
         self._build_controls(controls_frame, "Fijos", self._fixed_month_var, self._refresh_fixed)
         self._build_controls(controls_frame, "Variables", self._variable_month_var, self._refresh_variable)
         self._build_category_controls(controls_frame)
 
-        body_frame = tk.Frame(self._content_frame)
+        body_frame = tk.Frame(self._content_frame, bg=Theme.BACKGROUND)
         body_frame.pack(fill="both", expand=True)
         body_frame.columnconfigure(0, weight=1)
         body_frame.columnconfigure(1, weight=2)
 
-        list_frame = tk.Frame(body_frame)
+        list_frame = tk.Frame(body_frame, bg=Theme.BACKGROUND)
         list_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
-        charts_frame = tk.Frame(body_frame)
+        charts_frame = tk.Frame(body_frame, bg=Theme.BACKGROUND)
         charts_frame.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
 
         self._fixed_tree = _make_tree(list_frame, "Gastos fijos mensuales", ("Categoría", "Total"))
@@ -121,14 +124,28 @@ class GastosFrame(tk.Frame):
         callback: Callable[[], None],
         month_enabled: bool = True,
     ) -> None:
-        frame = tk.LabelFrame(parent, text=title, padx=8, pady=6)
+        frame = tk.LabelFrame(
+            parent,
+            text=title,
+            padx=8,
+            pady=6,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         frame.pack(side="left", padx=6, fill="x", expand=True)
         if month_enabled:
-            tk.Label(frame, text="Mes").grid(row=0, column=0, sticky="w")
+            tk.Label(frame, text="Mes", bg=Theme.CARD_BG, fg=Theme.PRIMARY_TEXT).grid(row=0, column=0, sticky="w")
             combo = ttk.Combobox(frame, textvariable=month_var, state="readonly", width=5)
             combo["values"] = [str(i) for i in range(1, 13)]
             combo.grid(row=1, column=0, padx=(0, 8))
-        tk.Button(frame, text="Actualizar", command=callback).grid(row=1, column=2)
+        tk.Button(
+            frame,
+            text="Actualizar",
+            command=callback,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        ).grid(row=1, column=2)
 
     def _make_month_combo(self, parent: tk.Misc, var: tk.StringVar) -> ttk.Combobox:
         combo = ttk.Combobox(parent, textvariable=var, state="readonly", width=5)
@@ -162,47 +179,133 @@ class GastosFrame(tk.Frame):
         self._refresh_variable_month_chart()
 
     def _build_category_controls(self, parent: tk.Frame) -> None:
-        frame = tk.LabelFrame(parent, text="Por categoría", padx=8, pady=6)
+        frame = tk.LabelFrame(
+            parent,
+            text="Por categoría",
+            padx=8,
+            pady=6,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         frame.pack(side="left", padx=6, fill="x", expand=True)
-        tk.Label(frame, text="Categoría").grid(row=0, column=0, sticky="w")
+        tk.Label(frame, text="Categoría", bg=Theme.CARD_BG, fg=Theme.PRIMARY_TEXT).grid(row=0, column=0, sticky="w")
         combo = ttk.Combobox(frame, textvariable=self._category_var, state="readonly")
         category_values = ["Todas"] + sorted(self._category_catalog.keys())
         combo["values"] = category_values or ["Sin categorías"]
         combo.set(self._category_var.get())
         combo.grid(row=1, column=0, padx=(0, 8))
-        tk.Button(frame, text="Actualizar", command=self._refresh_category_history).grid(row=1, column=2)
+        tk.Button(
+            frame,
+            text="Actualizar",
+            command=self._refresh_category_history,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        ).grid(row=1, column=2)
         # No tiene mes/año porque muestra el histórico completo de la categoría.
 
     def _build_year_selector(self, parent: tk.Frame) -> None:
-        frame = tk.LabelFrame(parent, text="Año compartido", padx=8, pady=6)
+        frame = tk.LabelFrame(
+            parent,
+            text="Año compartido",
+            padx=8,
+            pady=6,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         frame.pack(side="left", padx=6)
-        tk.Label(frame, text="Año").grid(row=0, column=0, sticky="w")
-        tk.Entry(frame, textvariable=self._global_year_var, width=6).grid(row=1, column=0, padx=(0, 8))
-        tk.Button(frame, text="Aplicar", command=self._refresh_all_views).grid(row=1, column=1)
+        tk.Label(frame, text="Año", bg=Theme.CARD_BG, fg=Theme.PRIMARY_TEXT).grid(row=0, column=0, sticky="w")
+        tk.Entry(
+            frame,
+            textvariable=self._global_year_var,
+            width=6,
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=1, column=0, padx=(0, 8))
+        tk.Button(
+            frame,
+            text="Aplicar",
+            command=self._refresh_all_views,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        ).grid(row=1, column=1)
 
     def _build_graphs_section(self, parent: tk.Frame) -> None:
-        section = ttk.LabelFrame(parent, text="Gráficos de gastos", padding=12)
+        section = tk.LabelFrame(
+            parent,
+            text="Gráficos de gastos",
+            padx=12,
+            pady=12,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         section.pack(fill="both", expand=True, pady=6)
 
-        fixed_frame = ttk.LabelFrame(section, text="Fijos por categoría", padding=8)
+        fixed_frame = tk.LabelFrame(
+            section,
+            text="Fijos por categoría",
+            padx=8,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         fixed_frame.pack(fill="x", pady=(0, 8))
-        tk.Label(fixed_frame, text="Año compartido").pack(side="left")
-        tk.Button(fixed_frame, text="Actualizar", command=self._refresh_fixed_chart).pack(side="left")
-        self._fixed_chart_container = ttk.Frame(section)
+        tk.Label(
+            fixed_frame,
+            text="Año compartido",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).pack(side="left")
+        tk.Button(
+            fixed_frame,
+            text="Actualizar",
+            command=self._refresh_fixed_chart,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        ).pack(side="left")
+        self._fixed_chart_container = tk.Frame(section, bg=Theme.CARD_BG)
         self._fixed_chart_container.pack(fill="both", expand=True, pady=(0, 8))
         self._fixed_chart_container.bind("<Configure>", lambda _: self._refresh_fixed_chart())
 
-        variable_pie_frame = ttk.LabelFrame(section, text="Variables mensuales", padding=8)
+        variable_pie_frame = tk.LabelFrame(
+            section,
+            text="Variables mensuales",
+            padx=8,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         variable_pie_frame.pack(fill="x", pady=(0, 8))
-        self._variable_month_chart_container = ttk.Frame(section)
+        self._variable_month_chart_container = tk.Frame(section, bg=Theme.CARD_BG)
         self._variable_month_chart_container.pack(fill="both", expand=True, pady=(0, 8))
         self._variable_month_chart_container.bind("<Configure>", lambda _: self._refresh_variable_month_chart())
 
-        variable_year_frame = ttk.LabelFrame(section, text="Variables anuales", padding=8)
+        variable_year_frame = tk.LabelFrame(
+            section,
+            text="Variables anuales",
+            padx=8,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         variable_year_frame.pack(fill="x", pady=(0, 8))
-        tk.Label(variable_year_frame, text="Año compartido").pack(side="left")
-        tk.Button(variable_year_frame, text="Actualizar", command=self._refresh_variable_year_chart).pack(side="left")
-        self._variable_year_chart_container = ttk.Frame(section)
+        tk.Label(
+            variable_year_frame,
+            text="Año compartido",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).pack(side="left")
+        tk.Button(
+            variable_year_frame,
+            text="Actualizar",
+            command=self._refresh_variable_year_chart,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        ).pack(side="left")
+        self._variable_year_chart_container = tk.Frame(section, bg=Theme.CARD_BG)
         self._variable_year_chart_container.pack(fill="both", expand=True)
         self._variable_year_chart_container.bind("<Configure>", lambda _: self._refresh_variable_year_chart())
 

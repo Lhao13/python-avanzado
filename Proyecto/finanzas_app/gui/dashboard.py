@@ -14,6 +14,7 @@ from ..logic.graficos import (
     monthly_comparison_data,
     objective_comparison_figure,
 )
+from .theme import Theme
 
 
 def _format_currency(value: float | None) -> str:
@@ -26,13 +27,26 @@ class DashboardFrame(tk.Frame):
     """Vista de estados financieros para mostrar la información inicial."""
 
     def __init__(self, parent: tk.Misc) -> None:
-        super().__init__(parent, padx=24, pady=24)
+        super().__init__(parent, padx=24, pady=24, bg=Theme.BACKGROUND)
         stats = obtener_dashboard_stats()
         period_label, _ = monthly_comparison_data()
 
         # Encabezado con saludo y periodo actual para el usuario.
-        tk.Label(self, text="¡Hola! Este es tu resumen financiero", font=(None, 14, "bold"), anchor="w").grid(row=0, column=0, columnspan=2, sticky="w")
-        tk.Label(self, text=f"Estadísticas del {period_label}", font=(None, 10), fg="#555").grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 12))
+        tk.Label(
+            self,
+            text="¡Hola! Este es tu resumen financiero",
+            font=(None, 14, "bold"),
+            anchor="w",
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=0, column=0, columnspan=2, sticky="w")
+        tk.Label(
+            self,
+            text=f"Estadísticas del {period_label}",
+            font=(None, 10),
+            fg=Theme.SECONDARY_TEXT,
+            bg=Theme.BACKGROUND,
+        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 12))
 
         rows = [
             ("Ahorro mensual", _format_currency(stats.get("monthly_savings"))),
@@ -44,27 +58,58 @@ class DashboardFrame(tk.Frame):
         self.columnconfigure(1, weight=1)
 
         for idx, (label_text, value) in enumerate(rows, start=2):
-            row_frame = tk.Frame(self)
+            row_frame = tk.Frame(self, bg=Theme.CARD_BG)
             row_frame.grid(row=idx, column=0, columnspan=2, sticky="ew", pady=4)
-            tk.Label(row_frame, text=f"{label_text}:", width=18, anchor="w").pack(side="left")
-            tk.Label(row_frame, text=value, width=12, anchor="e", font=(None, 12, "bold")).pack(side="right")
+            tk.Label(
+                row_frame,
+                text=f"{label_text}:",
+                width=18,
+                anchor="w",
+                bg=Theme.CARD_BG,
+                fg=Theme.PRIMARY_TEXT,
+            ).pack(side="left")
+            tk.Label(
+                row_frame,
+                text=value,
+                width=12,
+                anchor="e",
+                font=(None, 12, "bold"),
+                bg=Theme.CARD_BG,
+                fg=Theme.ACTION_COLOR,
+            ).pack(side="right")
 
         # Espacio para los gráficos lado a lado.
-        charts_container = tk.Frame(self)
+        # Cada sección gráfica usa el fondo general para mantener la jerarquía visual.
+        charts_container = tk.Frame(self, bg=Theme.BACKGROUND)
         charts_container.grid(row=len(rows) + 2, column=0, columnspan=2, sticky="nsew", pady=(16, 0))
         charts_container.columnconfigure(0, weight=1)
         charts_container.columnconfigure(1, weight=1)
 
-        bar_frame = tk.LabelFrame(charts_container, text="Gastos vs Ingresos", padx=12, pady=12)
+        bar_frame = tk.LabelFrame(
+            charts_container,
+            text="Gastos vs Ingresos",
+            padx=12,
+            pady=12,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         bar_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-        pie_frame = tk.LabelFrame(charts_container, text="Presupuesto específico", padx=12, pady=12)
+        pie_frame = tk.LabelFrame(
+            charts_container,
+            text="Presupuesto específico",
+            padx=12,
+            pady=12,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         pie_frame.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
 
         self._bar_canvas: FigureCanvasTkAgg | None = None
         self._pie_canvas: FigureCanvasTkAgg | None = None
-        self._bar_container = tk.Frame(bar_frame)
+        # Los contenedores de los gráficos heredan el fondo de la tarjeta para evitar contrastes bruscos.
+        self._bar_container = tk.Frame(bar_frame, bg=Theme.CARD_BG)
         self._bar_container.pack(fill="both", expand=True)
-        self._pie_container = tk.Frame(pie_frame)
+        self._pie_container = tk.Frame(pie_frame, bg=Theme.CARD_BG)
         self._pie_container.pack(fill="both", expand=True)
 
         self._bar_container.bind("<Configure>", lambda _: self._refresh_bar_chart())

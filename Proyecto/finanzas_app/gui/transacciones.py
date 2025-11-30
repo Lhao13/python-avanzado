@@ -9,13 +9,14 @@ from tkinter import messagebox, ttk
 from ..db.connection import DatabaseConnection
 from ..models import Categoria, Transaccion
 from ..repositories import CategoriaRepository, TransaccionRepository
+from .theme import Theme
 
 
 class TransactionForm(tk.Frame):
     """Formulario reutilizable para registrar gastos e ingresos."""
 
     def __init__(self, parent: tk.Misc) -> None:
-        super().__init__(parent)
+        super().__init__(parent, bg=Theme.BACKGROUND)
         self._db_connection = DatabaseConnection()
         self._trans_repo = TransaccionRepository(self._db_connection)
         self._categoria_repo = CategoriaRepository(self._db_connection)
@@ -40,10 +41,11 @@ class TransactionForm(tk.Frame):
         self._build_ui()
 
     def _build_ui(self) -> None:
-        container = tk.Frame(self)
+        # Agrupamos los formularios sobre el fondo principal para mantener la paleta.
+        container = tk.Frame(self, bg=Theme.BACKGROUND)
         container.pack(fill="x", padx=16, pady=12)
 
-        section_frame = tk.Frame(container)
+        section_frame = tk.Frame(container, bg=Theme.BACKGROUND)
         section_frame.pack(fill="both", expand=True)
 
         self._create_section(section_frame, "gasto", 0)
@@ -51,12 +53,25 @@ class TransactionForm(tk.Frame):
 
         self._build_transaction_table()
 
-        self.status_label = tk.Label(self, text="Listo", fg="gray")
+        self.status_label = tk.Label(
+            self,
+            text="Listo",
+            fg=Theme.SECONDARY_TEXT,
+            bg=Theme.BACKGROUND,
+        )
         self.status_label.pack(pady=6)
 
     def _create_section(self, parent: tk.Frame, tipo: str, column: int) -> None:
         title = "Gastos" if tipo == "gasto" else "Ingresos"
-        frame = ttk.LabelFrame(parent, text=title, padding=(12, 8))
+        # Cada sección se presenta como una tarjeta del tema para reforzar jerarquía.
+        frame = tk.LabelFrame(
+            parent,
+            text=title,
+            padx=12,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         frame.grid(row=0, column=column, padx=8, sticky="nsew")
         parent.grid_columnconfigure(column, weight=1)
 
@@ -70,26 +85,78 @@ class TransactionForm(tk.Frame):
         self._form_vars[tipo] = vars_map
 
         padding = {"padx": 6, "pady": 4}
-        tk.Label(frame, text="Monto (positivo):").grid(row=0, column=0, sticky="w", **padding)
-        tk.Entry(frame, textvariable=vars_map["amount"]).grid(row=0, column=1, **padding)
+        tk.Label(
+            frame,
+            text="Monto (positivo):",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=0, column=0, sticky="w", **padding)
+        tk.Entry(
+            frame,
+            textvariable=vars_map["amount"],
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=0, column=1, **padding)
 
-        tk.Label(frame, text="Cantidad (opcional):").grid(row=1, column=0, sticky="w", **padding)
-        tk.Entry(frame, textvariable=vars_map["quantity"]).grid(row=1, column=1, **padding)
+        tk.Label(
+            frame,
+            text="Cantidad (opcional):",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=1, column=0, sticky="w", **padding)
+        tk.Entry(
+            frame,
+            textvariable=vars_map["quantity"],
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=1, column=1, **padding)
 
-        tk.Label(frame, text="Fecha (YYYY-MM-DD):").grid(row=2, column=0, sticky="w", **padding)
-        tk.Entry(frame, textvariable=vars_map["date"]).grid(row=2, column=1, **padding)
+        tk.Label(
+            frame,
+            text="Fecha (YYYY-MM-DD):",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=2, column=0, sticky="w", **padding)
+        tk.Entry(
+            frame,
+            textvariable=vars_map["date"],
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=2, column=1, **padding)
 
-        tk.Label(frame, text="Categoría:").grid(row=3, column=0, sticky="w", **padding)
+        tk.Label(
+            frame,
+            text="Categoría:",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=3, column=0, sticky="w", **padding)
         category_combo = ttk.Combobox(frame, textvariable=vars_map["category"], state="readonly")
         category_combo["values"] = list(self._category_groups.get(tipo, {}).keys())
         if category_combo["values"]:
             category_combo.current(0)
         category_combo.grid(row=3, column=1, **padding)
 
-        tk.Label(frame, text="Descripción:").grid(row=4, column=0, sticky="w", **padding)
-        tk.Entry(frame, textvariable=vars_map["description"]).grid(row=4, column=1, **padding)
+        tk.Label(
+            frame,
+            text="Descripción:",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=4, column=0, sticky="w", **padding)
+        tk.Entry(
+            frame,
+            textvariable=vars_map["description"],
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=4, column=1, **padding)
 
-        submit_btn = tk.Button(frame, text="Guardar transacción", command=lambda t=tipo: self._on_submit(t))
+        submit_btn = tk.Button(
+            frame,
+            text="Guardar transacción",
+            command=lambda t=tipo: self._on_submit(t),
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        )
         submit_btn.grid(row=5, column=0, columnspan=2, pady=12)
         if not self._category_groups.get(tipo):
             messagebox.showwarning(
@@ -99,7 +166,15 @@ class TransactionForm(tk.Frame):
 
     def _build_transaction_table(self) -> None:
         """Construye el listado scrollable y el panel de edición debajo del formulario."""
-        table_frame = ttk.LabelFrame(self, text="Transacciones registradas", padding=(0, 1))
+        # La tabla principal se sitúa dentro de una tarjeta oscura del tema.
+        table_frame = tk.LabelFrame(
+            self,
+            text="Transacciones registradas",
+            padx=0,
+            pady=1,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         table_frame.pack(fill="both", expand=True, padx= 1 , pady=(0, 1))
 
         columns = (
@@ -125,7 +200,14 @@ class TransactionForm(tk.Frame):
         vsb.pack(side="right", fill="y")
         self._transactions_tree.bind("<<TreeviewSelect>>", self._on_tree_select)
 
-        edit_frame = ttk.LabelFrame(self, text="Editar / eliminar transacción", padding=(12, 8))
+        edit_frame = tk.LabelFrame(
+            self,
+            text="Editar / eliminar transacción",
+            padx=12,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         edit_frame.pack(fill="x", padx=16, pady=(0, 12))
 
         self._edit_vars = {
@@ -135,27 +217,89 @@ class TransactionForm(tk.Frame):
             "description": tk.StringVar(),
         }
         padding = {"padx": 6, "pady": 4}
-        tk.Label(edit_frame, text="Monto:").grid(row=0, column=0, sticky="w", **padding)
-        tk.Entry(edit_frame, textvariable=self._edit_vars["amount"]).grid(row=0, column=1, **padding)
+        tk.Label(
+            edit_frame,
+            text="Monto:",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=0, column=0, sticky="w", **padding)
+        tk.Entry(
+            edit_frame,
+            textvariable=self._edit_vars["amount"],
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=0, column=1, **padding)
 
-        tk.Label(edit_frame, text="Cantidad:").grid(row=0, column=2, sticky="w", **padding)
-        tk.Entry(edit_frame, textvariable=self._edit_vars["quantity"]).grid(row=0, column=3, **padding)
+        tk.Label(
+            edit_frame,
+            text="Cantidad:",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=0, column=2, sticky="w", **padding)
+        tk.Entry(
+            edit_frame,
+            textvariable=self._edit_vars["quantity"],
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=0, column=3, **padding)
 
-        tk.Label(edit_frame, text="Fecha (YYYY-MM-DD):").grid(row=1, column=0, sticky="w", **padding)
-        tk.Entry(edit_frame, textvariable=self._edit_vars["date"]).grid(row=1, column=1, **padding)
+        tk.Label(
+            edit_frame,
+            text="Fecha (YYYY-MM-DD):",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=1, column=0, sticky="w", **padding)
+        tk.Entry(
+            edit_frame,
+            textvariable=self._edit_vars["date"],
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=1, column=1, **padding)
 
-        tk.Label(edit_frame, text="Descripción:").grid(row=1, column=2, sticky="w", **padding)
-        tk.Entry(edit_frame, textvariable=self._edit_vars["description"]).grid(row=1, column=3, **padding)
+        tk.Label(
+            edit_frame,
+            text="Descripción:",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=1, column=2, sticky="w", **padding)
+        tk.Entry(
+            edit_frame,
+            textvariable=self._edit_vars["description"],
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=1, column=3, **padding)
 
         tk.Label(edit_frame, text="Categoría: ").grid(row=2, column=0, sticky="w", **padding)
-        self._category_display = tk.Label(edit_frame, text="Sin selección", font=(None, 10, "bold"))
+        self._category_display = tk.Label(
+            edit_frame,
+            text="Sin selección",
+            font=(None, 10, "bold"),
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         self._category_display.grid(row=2, column=1, columnspan=3, sticky="w")
 
-        btn_frame = tk.Frame(edit_frame)
+        btn_frame = tk.Frame(edit_frame, bg=Theme.CARD_BG)
         btn_frame.grid(row=3, column=0, columnspan=4, pady=(8, 0))
-        self._update_btn = tk.Button(btn_frame, text="Actualizar", state="disabled", command=self._update_transaction)
+        self._update_btn = tk.Button(
+            btn_frame,
+            text="Actualizar",
+            state="disabled",
+            command=self._update_transaction,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        )
         self._update_btn.pack(side="left", padx=4)
-        self._delete_btn = tk.Button(btn_frame, text="Eliminar", state="disabled", command=self._delete_transaction)
+        self._delete_btn = tk.Button(
+            btn_frame,
+            text="Eliminar",
+            state="disabled",
+            command=self._delete_transaction,
+            bg=Theme.WARNING,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        )
         self._delete_btn.pack(side="left", padx=4)
 
         self._refresh_transactions()

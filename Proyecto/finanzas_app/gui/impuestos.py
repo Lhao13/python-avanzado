@@ -12,6 +12,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from ..db.connection import DatabaseConnection
 from ..logic.graficos import annual_tax_paid_figure
 from ..repositories import ImpuestoAnualRepository
+from .theme import Theme
 
 
 def _format_money(value: float | None) -> str:
@@ -24,7 +25,7 @@ class ImpuestosFrame(tk.Frame):
     """Componente principal que expone los controles que pidió el usuario."""
 
     def __init__(self, parent: tk.Misc) -> None:
-        super().__init__(parent, padx=12, pady=12)
+        super().__init__(parent, padx=12, pady=12, bg=Theme.BACKGROUND)
         self._db_connection = DatabaseConnection()
         self._impuesto_repo = ImpuestoAnualRepository(self._db_connection)
         self._year_var = tk.StringVar(value=str(self._current_year()))
@@ -32,7 +33,13 @@ class ImpuestosFrame(tk.Frame):
         self._chart_container: ttk.Frame | None = None
         self._chart_canvas: FigureCanvasTkAgg | None = None
 
-        tk.Label(self, text="IMPUESTOS", font=(None, 14, "bold")).pack(anchor="w")
+        tk.Label(
+            self,
+            text="IMPUESTOS",
+            font=(None, 14, "bold"),
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).pack(anchor="w")
         self._build_message_section()
         self._build_tax_entry_section()
         self._build_records_section()
@@ -45,22 +52,72 @@ class ImpuestosFrame(tk.Frame):
         return datetime.now().year
 
     def _build_message_section(self) -> None:
-        section = ttk.LabelFrame(self, text="Disclaimer", padding=8)
+        section = tk.LabelFrame(
+            self,
+            text="Disclaimer",
+            padx=8,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         section.pack(fill="x", pady=(0, 12))
-        tk.Label(section, text="Este panel permite registrar y visualizar impuestos anuales. Estos valores seran utilizados como descuento final en la tabla de gastos.").pack(anchor="w")
+        tk.Label(
+            section,
+            text="Este panel permite registrar y visualizar impuestos anuales. Estos valores seran utilizados como descuento final en la tabla de gastos.",
+            bg=Theme.CARD_BG,
+            fg=Theme.SECONDARY_TEXT,
+        ).pack(anchor="w")
 
 
     def _build_tax_entry_section(self) -> None:
-        section = ttk.LabelFrame(self, text="Registrar impuesto anual", padding=8)
+        section = tk.LabelFrame(
+            self,
+            text="Registrar impuesto anual",
+            padx=8,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         section.pack(fill="x", pady=(0, 12))
-        tk.Label(section, text="Año").grid(row=0, column=0, sticky="w")
-        tk.Label(section, text="Impuesto pagado").grid(row=0, column=1, sticky="w", padx=(12, 0))
-        tk.Entry(section, textvariable=self._year_var, width=12).grid(row=1, column=0, pady=(4, 0))
-        tk.Entry(section, textvariable=self._amount_var, width=18).grid(row=1, column=1, padx=(12, 0), pady=(4, 0))
-        ttk.Button(section, text="Guardar", command=self._save_tax_entry).grid(row=1, column=2, padx=(12, 0))
+        tk.Label(section, text="Año", bg=Theme.CARD_BG, fg=Theme.PRIMARY_TEXT).grid(row=0, column=0, sticky="w")
+        tk.Label(
+            section,
+            text="Impuesto pagado",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=0, column=1, sticky="w", padx=(12, 0))
+        tk.Entry(
+            section,
+            textvariable=self._year_var,
+            width=12,
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=1, column=0, pady=(4, 0))
+        tk.Entry(
+            section,
+            textvariable=self._amount_var,
+            width=18,
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=1, column=1, padx=(12, 0), pady=(4, 0))
+        tk.Button(
+            section,
+            text="Guardar",
+            command=self._save_tax_entry,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        ).grid(row=1, column=2, padx=(12, 0))
 
     def _build_records_section(self) -> None:
-        section = ttk.LabelFrame(self, text="Pagos registrados", padding=8)
+        section = tk.LabelFrame(
+            self,
+            text="Pagos registrados",
+            padx=8,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         section.pack(fill="x", pady=(0, 12))
         columns = ("anio", "pagado")
         self._records_tree = ttk.Treeview(section, columns=columns, show="headings", height=6)
@@ -74,9 +131,17 @@ class ImpuestosFrame(tk.Frame):
         self._records_tree.configure(yscrollcommand=scrollbar.set)
 
     def _build_chart_section(self) -> None:
-        section = ttk.LabelFrame(self, text="Gráfico de impuestos", padding=8)
+        # El gráfico se apoya en la tarjeta del tema para mantener consistencia visual.
+        section = tk.LabelFrame(
+            self,
+            text="Gráfico de impuestos",
+            padx=8,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        )
         section.pack(fill="x", pady=(0, 12))
-        self._chart_container = ttk.Frame(section)
+        self._chart_container = tk.Frame(section, bg=Theme.CARD_BG)
         self._chart_container.configure(height=300, width=420)
         self._chart_container.pack(pady=(0, 4))
         self._chart_container.pack_propagate(False)

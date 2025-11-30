@@ -26,6 +26,7 @@ from ..logic.graficos import (
     monthly_spending_pie_figure,
 )
 from ..repositories import FinancialReportRepository
+from .theme import Theme
 
 
 def _format_money(value: float | None) -> str:
@@ -42,46 +43,88 @@ class ReportesFrame(tk.Frame):
     """Sección dedicada a exportar reportes mensuales y anuales."""
 
     def __init__(self, parent: tk.Misc) -> None:
-        super().__init__(parent, padx=12, pady=12)
+        super().__init__(parent, padx=12, pady=12, bg=Theme.BACKGROUND)
         self._repo = FinancialReportRepository(DatabaseConnection())
         self._monthly_year_var = tk.StringVar()
         self._monthly_month_var = tk.StringVar(value=month_name[datetime.now().month])
         self._annual_year_var = tk.StringVar()
 
-        tk.Label(self, text="REPORTES", font=(None, 14, "bold")).pack(anchor="w")
+        tk.Label(
+            self,
+            text="REPORTES",
+            font=(None, 14, "bold"),
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).pack(anchor="w")
         self._build_monthly_section()
         self._build_annual_section()
         self._refresh_available_years()
 
     def _build_monthly_section(self) -> None:
-        section = ttk.LabelFrame(self, text="Reporte mensual", padding=8)
-        section.pack(fill="x", pady=(8, 4))
-        tk.Label(section, text="Exporta un PDF con indicadores, listas y gráficos del mes seleccionado.").grid(
-            row=0, column=0, columnspan=3, sticky="w"
+        # Cada formulario principal se presenta como una tarjeta del tema.
+        section = tk.LabelFrame(
+            self,
+            text="Reporte mensual",
+            padx=8,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
         )
-        tk.Label(section, text="Año").grid(row=1, column=0, sticky="w", pady=(6, 0))
+        section.pack(fill="x", pady=(8, 4))
+        tk.Label(
+            section,
+            text="Exporta un PDF con indicadores, listas y gráficos del mes seleccionado.",
+            bg=Theme.CARD_BG,
+            fg=Theme.SECONDARY_TEXT,
+        ).grid(row=0, column=0, columnspan=3, sticky="w")
+        tk.Label(
+            section,
+            text="Año",
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=1, column=0, sticky="w", pady=(6, 0))
         self._monthly_year_combo = ttk.Combobox(section, textvariable=self._monthly_year_var, state="readonly", width=10)
         self._monthly_year_combo.grid(row=1, column=1, pady=(6, 0))
-        tk.Label(section, text="Mes").grid(row=2, column=0, sticky="w")
+        tk.Label(section, text="Mes", bg=Theme.CARD_BG, fg=Theme.PRIMARY_TEXT).grid(row=2, column=0, sticky="w")
         month_combo = ttk.Combobox(section, textvariable=self._monthly_month_var, state="readonly")
         month_combo["values"] = [month_name[i] for i in range(1, 13)]
         month_combo.grid(row=2, column=1, pady=(0, 4))
-        ttk.Button(section, text="Generar reporte mensual", command=self._generate_monthly_report).grid(
-            row=3, column=0, columnspan=2, pady=(8, 0)
-        )
+        tk.Button(
+            section,
+            text="Generar reporte mensual",
+            command=self._generate_monthly_report,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        ).grid(row=3, column=0, columnspan=2, pady=(8, 0))
 
     def _build_annual_section(self) -> None:
-        section = ttk.LabelFrame(self, text="Reporte anual", padding=8)
-        section.pack(fill="x", pady=(4, 12))
-        tk.Label(section, text="Crea un archivo PDF con los indicadores globales y los gráficos del año elegido.").grid(
-            row=0, column=0, columnspan=2, sticky="w"
+        section = tk.LabelFrame(
+            self,
+            text="Reporte anual",
+            padx=8,
+            pady=8,
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
         )
-        tk.Label(section, text="Año").grid(row=1, column=0, sticky="w", pady=(6, 0))
+        section.pack(fill="x", pady=(4, 12))
+        tk.Label(
+            section,
+            text="Crea un archivo PDF con los indicadores globales y los gráficos del año elegido.",
+            bg=Theme.CARD_BG,
+            fg=Theme.SECONDARY_TEXT,
+        ).grid(row=0, column=0, columnspan=2, sticky="w")
+        tk.Label(section, text="Año", bg=Theme.CARD_BG, fg=Theme.PRIMARY_TEXT).grid(row=1, column=0, sticky="w", pady=(6, 0))
         self._annual_year_combo = ttk.Combobox(section, textvariable=self._annual_year_var, state="readonly", width=10)
         self._annual_year_combo.grid(row=1, column=1, pady=(6, 0))
-        ttk.Button(section, text="Generar reporte anual", command=self._generate_annual_report).grid(
-            row=2, column=0, columnspan=2, pady=(8, 0)
-        )
+        tk.Button(
+            section,
+            text="Generar reporte anual",
+            command=self._generate_annual_report,
+            bg=Theme.ACTION_COLOR,
+            fg="white",
+            activebackground=Theme.ACTION_HOVER,
+        ).grid(row=2, column=0, columnspan=2, pady=(8, 0))
 
     def _refresh_available_years(self) -> None:
         years = self._repo.get_available_years() or [datetime.now().year]
