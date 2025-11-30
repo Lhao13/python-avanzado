@@ -1,1 +1,2 @@
 mysql-connector-python>=8.1.0
+scikit-learn>=1.2

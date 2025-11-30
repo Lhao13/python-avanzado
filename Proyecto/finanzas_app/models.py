@@ -9,8 +9,6 @@ class Categoria:
     nombre: Optional[str] = None
     periodicidad: Optional[str] = None
     tipo: Optional[str] = None
-    deducible: Optional[int] = None
-    tipo_deduccion: Optional[str] = None
     descripcion: Optional[str] = None
 
 

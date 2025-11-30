@@ -36,7 +36,6 @@ class DashboardFrame(tk.Frame):
 
         rows = [
             ("Ahorro mensual", _format_currency(stats.get("monthly_savings"))),
-            ("Ahorro anual", _format_currency(stats.get("annual_savings"))),
             ("Gastos del mes", _format_currency(stats.get("monthly_expenses"))),
             ("Ingresos del mes", _format_currency(stats.get("monthly_incomes"))),
             ("Presupuesto mes", _format_currency(stats.get("monthly_budget"))),

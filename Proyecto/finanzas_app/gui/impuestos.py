@@ -75,9 +75,11 @@ class ImpuestosFrame(tk.Frame):
 
     def _build_chart_section(self) -> None:
         section = ttk.LabelFrame(self, text="Gráfico de impuestos", padding=8)
-        section.pack(fill="both", expand=True)
+        section.pack(fill="x", pady=(0, 12))
         self._chart_container = ttk.Frame(section)
-        self._chart_container.pack(fill="both", expand=True)
+        self._chart_container.configure(height=300, width=420)
+        self._chart_container.pack(pady=(0, 4))
+        self._chart_container.pack_propagate(False)
         self._chart_container.bind("<Configure>", lambda _: self._refresh_tax_chart())
 
     def _show_user_message(self) -> None:
@@ -120,7 +122,7 @@ class ImpuestosFrame(tk.Frame):
     def _refresh_tax_chart(self) -> None:
         if self._chart_container is None:
             return
-        figure = annual_tax_paid_figure()
+        figure = annual_tax_paid_figure(figsize=(5, 2.5))
         self._chart_canvas = self._render_figure_on_container(self._chart_container, figure, self._chart_canvas)
 
     def _render_figure_on_container(

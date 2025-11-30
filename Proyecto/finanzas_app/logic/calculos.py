@@ -91,23 +91,10 @@ def annual_income(year: int) -> Optional[float]:
     return _sum_transacciones(year, "ingreso")
 
 
-def annual_deductible_expenses(year: int) -> Optional[float]:
-    """Suma de gastos marcados como deducibles durante el año."""
-    query = """
-    SELECT SUM(t.monto)
-    FROM transaccion t
-    JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
-    WHERE YEAR(t.fecha) = %s
-      AND c.tipo = 'gasto'
-      AND c.deducible = 1
-    """
-    return _scalar_query(query, (year,))
-
-
 def annual_tax_summary(year: int, tax_rate: float = 0.12) -> Dict[str, Optional[float]]:
-    """Calcula ingreso, deducciones, base y el impuesto estimado."""
+    """Calcula ingreso, base y el impuesto estimado (sin deducciones explícitas)."""
     income = annual_income(year) or 0.0
-    deductions = annual_deductible_expenses(year) or 0.0
+    deductions = 0.0  # Las deducciones por categoría ya no están disponibles.
     base = income - deductions
     calculated = max(0.0, base * tax_rate)
     return {

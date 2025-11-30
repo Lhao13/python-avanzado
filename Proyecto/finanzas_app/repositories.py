@@ -37,15 +37,13 @@ class CategoriaRepository(BaseRepository):
     def create(self, categoria: Categoria) -> int:
         """Inserta una nueva categoría."""
         query = """
-        INSERT INTO categoria (nombre, periodicidad, tipo, deducible, tipo_deduccion, descripcion)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO categoria (nombre, periodicidad, tipo, descripcion)
+        VALUES (%s, %s, %s, %s)
         """
         params = (
             categoria.nombre,
             categoria.periodicidad,
             categoria.tipo,
-            categoria.deducible,
-            categoria.tipo_deduccion,
             categoria.descripcion,
         )
         categoria.id_categoria = self._execute_write(query, params)
@@ -59,8 +57,6 @@ class CategoriaRepository(BaseRepository):
             nombre,
             periodicidad,
             tipo,
-            deducible,
-            tipo_deduccion,
             descripcion
         FROM categoria
         """
@@ -76,8 +72,6 @@ class CategoriaRepository(BaseRepository):
             nombre,
             periodicidad,
             tipo,
-            deducible,
-            tipo_deduccion,
             descripcion
         FROM categoria
         WHERE tipo = %s

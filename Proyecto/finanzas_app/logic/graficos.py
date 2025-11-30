@@ -133,9 +133,10 @@ def budget_pie_figure(year: int, month: int) -> Figure:
         labels,
         title="Categoría",
         loc="center left",
-        bbox_to_anchor=(1, 0.5),
+        bbox_to_anchor=(1.05, 0.5),
         frameon=False,
     )
+    fig.subplots_adjust(left=0.08, right=0.65)
     return fig
 
 
@@ -147,13 +148,13 @@ def _objective_total_for_month(year: int, month: int) -> float:
 
 def monthly_objective_comparison_data(
     year: Optional[int] = None, month: Optional[int] = None
-) -> Tuple[str, Tuple[Tuple[str, float], Tuple[str, float]], float]:
+) -> Tuple[str, Tuple[Tuple[str, float], Tuple[str, float], Tuple[str, float]], float]:
     period_year, period_month = _get_period(year, month)
     label = f"{month_name[period_month]} {period_year}"
     ingresos = _value_for_type(period_year, period_month, "ingreso")
     objetivo = _objective_total_for_month(period_year, period_month)
     difference = ingresos - objetivo
-    return label, (("Ingresos", ingresos), ("Objetivo gastos", objetivo)), difference
+    return label, (("Ingresos", ingresos), ("Objetivo gastos", objetivo), ("Ahorro", difference)), difference
 
 
 def objective_comparison_figure(year: int, month: int) -> Figure:
@@ -304,6 +305,7 @@ def variable_month_pie_figure(year: int, month: int) -> Figure:
         bbox_to_anchor=(1, 0.5),
         frameon=False,
     )
+    fig.subplots_adjust(left=0.08, right=0.65)
     return fig
 
 
@@ -405,12 +407,12 @@ def annual_incomes_figure() -> Figure:
     return figure
 
 
-def annual_tax_paid_figure() -> Figure:
+def annual_tax_paid_figure(figsize: tuple[int, int] = (6, 3)) -> Figure:
     """Construye la barra de los impuestos pagados por año."""
     repo = ImpuestoAnualRepository(DatabaseConnection())
     rows = repo.list_tax_payments()
     df = pd.DataFrame(rows)
-    fig = Figure(figsize=(8, 4))
+    fig = Figure(figsize=figsize)
     if df.empty:
         ax = fig.subplots()
         ax.text(0.5, 0.5, "Sin registros", ha="center", va="center", fontsize=11, color="#666")

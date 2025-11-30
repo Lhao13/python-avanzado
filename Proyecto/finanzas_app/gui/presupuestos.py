@@ -103,10 +103,10 @@ class PresupuestosFrame(tk.Frame):
         tree_scroll.pack(side="right", fill="y")
         self._objectives_tree.bind("<<TreeviewSelect>>", self._on_objective_select)
 
-        btn_frame = tk.Frame(list_frame)
-        btn_frame.pack(fill="x", pady=(6, 0))
+        btn_frame = tk.Frame(labelframe)
+        btn_frame.pack(fill="x", pady=(4, 8))
         self._delete_btn = tk.Button(btn_frame, text="Eliminar objetivo seleccionado", state="disabled", command=self._delete_selected_objective)
-        self._delete_btn.pack(side="right")
+        self._delete_btn.pack(side="left")
 
         charts_container = tk.Frame(labelframe)
         charts_container.pack(fill="both", expand=True)

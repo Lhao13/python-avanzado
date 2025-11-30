@@ -1,211 +1,161 @@
 import mysql.connector
-from datetime import date, timedelta
 import random
+from datetime import datetime, timedelta
 
-#Script para poblar la base de datos con datos aleatorios
+# ----------------------------------------------------------------
+# CONEXIÓN A LA BASE DE DATOS
+# ----------------------------------------------------------------
+db = mysql.connector.connect(
+    host="localhost",
+    user="root",
+    password="Dante2024.",
+    database="mydb"
+)
+cursor = db.cursor()
 
-# ============================================
-#  CONEXIÓN A MYSQL
-# ============================================
-config = {
-    "host": "localhost",
-    "user": "root",
-    "password": "Dante2024.",
-    "database": "mydb"
-}
+print("Conectado a la base de datos.")
 
-conn = mysql.connector.connect(**config)
-cursor = conn.cursor()
-print("Conectado correctamente a MySQL.")
+# ----------------------------------------------------------------
+# CATEGORÍAS: clasificar según su tipo y periodicidad
+# ----------------------------------------------------------------
+cursor.execute("SELECT Id_Categoria, nombre, periodicidad, tipo FROM categoria")
+categorias = cursor.fetchall()
 
+gastos_fijos = []
+gastos_variables = []
+ingresos_fijos = []
+ingresos_variables = []
 
-# ============================================
-#  FUNCIONES DE INSERCIÓN
-# ============================================
-def insert_categoria(nombre, periodicidad, tipo, deducible, tipo_deduccion, descripcion):
-    query = """
-        INSERT INTO Categoria (nombre, periodicidad, tipo, deducible, tipo_deduccion, descripcion)
-        VALUES (%s, %s, %s, %s, %s, %s)
-    """
-    cursor.execute(query, (nombre, periodicidad, tipo, deducible, tipo_deduccion, descripcion))
-    conn.commit()
-    return cursor.lastrowid
+for cat in categorias:
+    id_cat, nombre, periodicidad, tipo = cat
+    if tipo == "gasto":
+        if periodicidad == "mensual":
+            gastos_fijos.append(id_cat)
+        else:
+            gastos_variables.append(id_cat)
+    else:
+        if periodicidad == "mensual":
+            ingresos_fijos.append(id_cat)
+        else:
+            ingresos_variables.append(id_cat)
 
+print("Clasificación de categorías completada.")
 
-def insert_transaccion(monto, cantidad, fecha, categoria_id, descripcion):
-    query = """
-        INSERT INTO Transaccion (monto, cantidad, fecha, Categoria_Id_Categoria, description)
-        VALUES (%s, %s, %s, %s, %s)
-    """
-    cursor.execute(query, (monto, cantidad, fecha, categoria_id, descripcion))
-    conn.commit()
+# ----------------------------------------------------------------
+# FUNCIONES PARA GENERAR MONTOS REALISTAS
+# ----------------------------------------------------------------
 
+def monto_gasto_fijo(nombre):
+    """Gastos fijos casi constantes, variación mínima."""
+    base = {
+        "Alquiler": 450,
+        "Servicios básicos": 80,
+        "Internet y telefonía": 40,
+        "Transporte fijo": 30,
+        "Seguro de salud": 60,
+        "Educación": 150,
+        "Suscripciones": 20,
+        "Gastos bancarios": 5,
+    }
+    base_monto = base.get(nombre, random.randint(30, 150))
+    return round(random.uniform(base_monto * 0.95, base_monto * 1.05), 2)
 
-def insert_presupuesto_especifico(anio, mes, monto, categoria_id):
-    query = """
-        INSERT INTO Presupuesto_especifico (anio, mes, monto, Categoria_Id_Categoria)
-        VALUES (%s, %s, %s, %s)
-    """
-    cursor.execute(query, (anio, mes, monto, categoria_id))
-    conn.commit()
+def monto_gasto_variable():
+    """Gastos variables pueden variar mucho."""
+    return round(random.uniform(5, 300), 2)
 
+def monto_ingreso_fijo(nombre):
+    """Ingresos fijos casi constantes."""
+    base = {
+        "Sueldo mensual": 1200,
+        "Rentas": 300,
+    }
+    base_monto = base.get(nombre, random.randint(800, 1500))
+    return round(random.uniform(base_monto * 0.97, base_monto * 1.03), 2)
 
+def monto_ingreso_variable():
+    """Ingresos variables esporádicos pero altos."""
+    return round(random.uniform(50, 600), 2)
 
-def insert_impuesto_anual(anio, ingreso_total, gastos_deducibles, base_imponible, impuesto_calculado, impuesto_pagado, diferencia):
-    query = """
-        INSERT INTO impuesto_anual 
-        (anio, ingreso_total, gastos_deducibles, base_imponible, impuesto_calculado, impuesto_pagado, diferencia)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """
-    cursor.execute(query, (anio, ingreso_total, gastos_deducibles, base_imponible, impuesto_calculado, impuesto_pagado, diferencia))
-    conn.commit()
+# ----------------------------------------------------------------
+# GENERAR TRANSACCIONES 2023–2025
+# ----------------------------------------------------------------
+print("Generando transacciones...")
 
+start_date = datetime(2023, 1, 1)
+end_date = datetime(2025, 12, 31)
 
+total_transacciones = 1000
+contador = 0
 
-# ============================================
-#  INSERTAR CATEGORÍAS
-# ============================================
-print("\nInsertando categorías...")
+while contador < total_transacciones:
 
-categorias = {
-    "Sueldo": ("mensual", "ingreso", 0, None, "Ingreso mensual fijo"),
-    "Alquiler": ("mensual", "gasto", 0, None, "Pago de renta"),
-    "Comida": ("variable", "gasto", 0, None, "Supermercado"),
-    "Transporte": ("variable", "gasto", 0, None, "Movilidad variada"),
-    "Ocio": ("variable", "gasto", 0, None, "Cine, bares, juegos"),
-    "Servicios": ("mensual", "gasto", 0, None, "Luz, agua, internet"),
-    "Salud": ("variable", "gasto", 1, "salud", "Gastos médicos deducibles"),
-    "Educación": ("anual", "gasto", 1, "educacion", "Gastos educativos"),
-    "Ahorro": ("mensual", "gasto", 0, None, "Dinero ahorrado"),
-    "Impuesto SRI anual": ("anual", "gasto", 0, None, "Pago de impuestos anuales")
-}
+    # Fecha aleatoria entre 2023 y 2025
+    delta = end_date - start_date
+    fecha = start_date + timedelta(days=random.randint(0, delta.days))
 
-categoria_ids = {}
-for nombre, data in categorias.items():
-    categoria_ids[nombre] = insert_categoria(nombre, *data)
+    # Escoger categoría
+    categoria = random.choice(categorias)
+    id_cat, nombre_cat, periodicidad, tipo_cat = categoria
 
-print("Categorías creadas:", categoria_ids)
+    # Generar monto realista según categoría
+    if tipo_cat == "gasto":
+        if periodicidad == "mensual":
+            monto = monto_gasto_fijo(nombre_cat)
+        else:
+            monto = monto_gasto_variable()
+    else:  # ingresos
+        if periodicidad == "mensual":
+            monto = monto_ingreso_fijo(nombre_cat)
+        else:
+            # ingresos variables son raros → insertar menos
+            if random.random() < 0.75:
+                continue  # saltamos para simular esporádicos
+            monto = monto_ingreso_variable()
 
+    cantidad = 1
+    descripcion = f"{nombre_cat}"
 
-
-# ============================================
-#  FUNCIÓN PARA FECHAS ALEATORIAS
-# ============================================
-def random_date(start_year=2023, end_year=2025):
-    start = date(start_year, 1, 1)
-    end = date(end_year, 12, 31)
-    delta = end - start
-    return start + timedelta(days=random.randint(0, delta.days))
-
-
-
-# ============================================
-#  GENERACIÓN MASIVA DE TRANSACCIONES
-# ============================================
-print("\nInsertando transacciones aleatorias...")
-
-descripciones = ["Pago", "Compra", "Servicio", "Gasto", "Transacción", "Registro"]
-
-def random_description():
-    return random.choice(descripciones) + " " + str(random.randint(1, 999))
-
-# INGRESOS mensuales (24 meses aprox)
-for month in range(1, 13):
-    insert_transaccion(
-        monto=round(random.uniform(1800, 2500), 2),
-        cantidad=1,
-        fecha=date(2024, month, 1),
-        categoria_id=categoria_ids["Sueldo"],
-        descripcion="Sueldo mensual"
+    cursor.execute(
+        "INSERT INTO transaccion (monto, cantidad, fecha, Categoria_Id_Categoria, description) "
+        "VALUES (%s, %s, %s, %s, %s)",
+        (monto, cantidad, fecha.date(), id_cat, descripcion)
     )
 
-# GASTOS FIJOS mensuales
-for month in range(1, 13):
-    insert_transaccion(round(random.uniform(450, 520), 2), 1, date(2024, month, 5), categoria_ids["Alquiler"], "Renta mensual")
-    insert_transaccion(round(random.uniform(60, 120), 2), 1, date(2024, month, 10), categoria_ids["Servicios"], "Servicios básicos")
+    contador += 1
 
-# GASTOS VARIABLES (200–400 transacciones aleatorias)
-for _ in range(random.randint(200, 400)):
-    categoria = random.choice(["Comida", "Transporte", "Ocio"])
-    insert_transaccion(
-        monto=round(random.uniform(5, 80), 2),
-        cantidad=1,
-        fecha=random_date(),
-        categoria_id=categoria_ids[categoria],
-        descripcion=random_description()
-    )
+db.commit()
+print(f"Transacciones generadas: {contador}")
 
-# GASTOS DEDUCIBLES
-for _ in range(40):
-    insert_transaccion(
-        monto=round(random.uniform(30, 150), 2),
-        cantidad=1,
-        fecha=random_date(),
-        categoria_id=categoria_ids["Salud"],
-        descripcion="Gasto médico"
-    )
+# ----------------------------------------------------------------
+# GENERAR PRESUPUESTOS ESPECÍFICOS
+# ----------------------------------------------------------------
+print("Generando presupuestos específicos (4 por mes)...")
 
-# EDUCACIÓN anual
-insert_transaccion(
-    monto=1500.00,
-    cantidad=1,
-    fecha=random_date(2023, 2025),
-    categoria_id=categoria_ids["Educación"],
-    descripcion="Pago colegio anual"
-)
+def monto_presupuesto():
+    return round(random.uniform(50, 400), 2)
 
-# IMPUESTO ANUAL
-insert_transaccion(
-    monto=round(random.uniform(500, 900), 2),
-    cantidad=1,
-    fecha=date(2024, 3, 20),
-    categoria_id=categoria_ids["Impuesto SRI anual"],
-    descripcion="Pago impuesto anual"
-)
+for anio in [2023, 2024, 2025]:
+    for mes in range(1, 13):
+        categorias_random = random.sample([c[0] for c in categorias], 4)
 
-print("Transacciones generadas exitosamente.")
+        for cat_id in categorias_random:
+            cursor.execute(
+                "INSERT INTO presupuesto_especifico (anio, mes, monto, Categoria_Id_Categoria) "
+                "VALUES (%s, %s, %s, %s)",
+                (anio, mes, monto_presupuesto(), cat_id)
+            )
 
+db.commit()
+print("Presupuestos específicos generados correctamente.")
 
-
-
-# ============================================
-#  PRESUPUESTOS ESPECÍFICOS
-# ============================================
-print("\nInsertando presupuestos específicos...")
-
-for cat in ["Comida", "Transporte", "Ocio"]:
-    insert_presupuesto_especifico(2024, random.randint(1, 12), random.randint(100, 300), categoria_ids[cat])
-
-print("Presupuestos específicos insertados.")
-
-
-
-
-# ============================================
-#  IMPUESTO ANUAL CALCULADO
-# ============================================
-print("\nInsertando impuesto anual...")
-
-insert_impuesto_anual(
-    anio=2024,
-    ingreso_total=26000.00,
-    gastos_deducibles=1200.00,
-    base_imponible=24800.00,
-    impuesto_calculado=520.00,
-    impuesto_pagado=600.00,
-    diferencia=80.00
-)
-
-print("Impuesto anual insertado.")
-
-
-
-# ============================================
-#  CERRAR CONEXIÓN
-# ============================================
+# ----------------------------------------------------------------
+# FINAL
+# ----------------------------------------------------------------
 cursor.close()
-conn.close()
+db.close()
 
-print("\n📌 DATOS ALEATORIOS GENERADOS EXITOSAMENTE 📌")
+print("✔ Finalizado correctamente.")
+
 
 

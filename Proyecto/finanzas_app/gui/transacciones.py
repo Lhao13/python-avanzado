@@ -41,7 +41,7 @@ class TransactionForm(tk.Frame):
 
     def _build_ui(self) -> None:
         container = tk.Frame(self)
-        container.pack(fill="both", expand=True, padx=16, pady=12)
+        container.pack(fill="x", padx=16, pady=12)
 
         section_frame = tk.Frame(container)
         section_frame.pack(fill="both", expand=True)
@@ -99,8 +99,8 @@ class TransactionForm(tk.Frame):
 
     def _build_transaction_table(self) -> None:
         """Construye el listado scrollable y el panel de edición debajo del formulario."""
-        table_frame = ttk.LabelFrame(self, text="Transacciones registradas", padding=(12, 8))
-        table_frame.pack(fill="both", expand=True, padx=16, pady=(8, 12))
+        table_frame = ttk.LabelFrame(self, text="Transacciones registradas", padding=(0, 1))
+        table_frame.pack(fill="both", expand=True, padx= 1 , pady=(0, 1))
 
         columns = (
             ("fecha", "Fecha", 110, "center"),

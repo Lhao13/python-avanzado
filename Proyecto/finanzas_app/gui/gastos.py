@@ -194,7 +194,6 @@ class GastosFrame(tk.Frame):
 
         variable_pie_frame = ttk.LabelFrame(section, text="Variables mensuales", padding=8)
         variable_pie_frame.pack(fill="x", pady=(0, 8))
-        tk.Label(variable_pie_frame, text="Mes (controlado arriba)").pack(side="left")
         self._variable_month_chart_container = ttk.Frame(section)
         self._variable_month_chart_container.pack(fill="both", expand=True, pady=(0, 8))
         self._variable_month_chart_container.bind("<Configure>", lambda _: self._refresh_variable_month_chart())

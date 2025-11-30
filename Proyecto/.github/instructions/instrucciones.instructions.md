@@ -19,9 +19,7 @@ Desarrollo por fases:
     •	Gráficos con matplotlib, seaborn y plotnine:
       o	Gráfica de gasto mensual, comparación por categorías, Tendencias en periodos específicos.
     •	Integración de un modelo de proyección de gastos, usando:
-      o	Regresión lineal simple.
-      o	Suavizado exponencial.
-      o	Predicción de gasto mensual futuro.
+      o	Random Forest o Regresión Lineal Simple para predecir gastos futuros basados en datos históricos.
   5. Interfaz de Usuario (CLI)
     •	Con menús interactivos, ingreso guiado de datos y mensajes de error amigables.
   6. Pruebas y Documentación
@@ -79,8 +77,6 @@ CREATE TABLE `categoria` (
   `nombre` varchar(45) NOT NULL,
   `periodicidad` varchar(45) NOT NULL,
   `tipo` varchar(45) NOT NULL COMMENT 'anual, mensual, variable',
-  `deducible` int DEFAULT NULL,
-  `tipo_deduccion` varchar(45) DEFAULT NULL,
   `descripcion` varchar(45) DEFAULT NULL,
   PRIMARY KEY (`Id_Categoria`,`nombre`,`periodicidad`,`tipo`),
   CONSTRAINT `chk_periodicidad` CHECK ((`periodicidad` in (_utf8mb3'anual',_utf8mb3'mensual',_utf8mb3'variable')))
