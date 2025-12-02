@@ -23,6 +23,7 @@ class FinanceApp(tk.Tk):
         self.geometry("1500x1200")
         self.resizable(False, False)
         self.configure(bg=Theme.BACKGROUND)
+        self._set_window_icon()
 
         self._view_factories = {
             "Dashboard": lambda parent: DashboardFrame(parent),
@@ -91,6 +92,14 @@ class FinanceApp(tk.Tk):
             return
         self._current_view = factory(self._content_area)
         self._current_view.pack(fill="both", expand=True)
+
+    def _set_window_icon(self) -> None:
+        # Usa el chancho como icono de ventana para que Windows y la barra de título lo muestren.
+        try:
+            icon_image = PhotoImage(file=str(Theme.LOGO_PATH))
+            self.iconphoto(False, icon_image)
+        except Exception:
+            pass
 
 
 def main() -> None:

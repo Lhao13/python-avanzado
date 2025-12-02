@@ -103,3 +103,9 @@ La ventana solicita monto, cantidad, fecha, categoría y descripción. Asegúrat
 
 ### Cálculos
 - `finanzas_app/logic/calculos.py` mantiene las funciones que alimentan estadísticas (`dashboard`) y los filtros de reportes; la revisión reciente sólo tocó la presentación visual basada en el tema y no alteró las fórmulas o consultas.
+
+## Cambios recientes (ultimos)
+- Reportes PDF: el resumen y la tabla principal ahora se renderizan juntos en la página inicial, evitando saltos grandes y mostrando datos más densos desde el inicio.
+- Predicción: la vista ahora muestra métricas reales y de validación con `TimeSeriesSplit` y grafica la importancia de características para describir la metodología.
+- Presupuestos: el formulario registra comentarios y sólo muestra categorías de gastos variables, y estos comentarios también se listan en las tablas de objetivos.
+- Datos de ingresos: la consulta que alimenta las tablas y PDF añade un alias consistente `categoria` para mostrar el nombre de la categoría en todos los contextos.
