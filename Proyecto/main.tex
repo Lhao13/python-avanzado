@@ -1,0 +1,115 @@
+\documentclass{article}
+
+% Language setting
+% Replace `english' with e.g. `spanish' to change the document language
+\usepackage[spanish]{babel}
+
+% Set page size and margins
+% Replace `letterpaper' with `a4paper' for UK/EU standard size
+\usepackage[letterpaper,top=2cm,bottom=2cm,left=3cm,right=3cm,marginparwidth=1.75cm]{geometry}
+
+% Useful packages
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+%Code listing style named "mystyle"
+\lstdefinestyle{mystyle}{
+  backgroundcolor=\color{backcolour}, commentstyle=\color{codegreen},
+  keywordstyle=\color{magenta},
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codepurple},
+  basicstyle=\ttfamily\footnotesize,
+  breakatwhitespace=false,         
+  breaklines=true,                 
+  captionpos=b,                    
+  keepspaces=true,                 
+  numbers=left,                    
+  numbersep=5pt,                  
+  showspaces=false,                
+  showstringspaces=false,
+  showtabs=false,                  
+  tabsize=2
+}
+
+\title{Programación Avanzada Python Taller 1}
+\author{Leandro Coral (00325644)}
+\section{Discucion}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Este informe describe el desarrollo de una aplicación de finanzas personales construida en Python, enfocada en la gestión, visualización y predicción de gastos e ingresos. La solución combina una interfaz gráfica temática con módulos de cálculo, gráficos y reportes, además de documentar la estructura de persistencia en MySQL y la metodología seguida. El objetivo es demostrar cómo la aplicación registra transacciones, categoriza movimientos, protege presupuestos y genera proyecciones gracias a un modelo estadístico sencillo.
+\end{abstract}
+
+\section{Introduccion}
+El principal problema detectado fue la dispersión de la información financiera personal: los registros se hacían de forma aislada, sin categorización ni proyección futura, lo que generaba incertidumbre sobre los hábitos de gasto. Para resolverlo, desarrollamos un sistema que centraliza ingresos y egresos, normaliza categorías, valida presupuesto y muestra reportes automatizados. El panel principal (dashboard) comunica en tiempo real los saldos, mientras que secciones específicas de gastos, ingresos, presupuestos e impuestos permiten operaciones guiadas y consistentes. También incorporamos un modelo de Random Forest entrenado con el historial histórico para estimar los gastos futuros, lo que ayuda a identificar desviaciones y a planificar meses siguientes con mayor precisión. Esta estrategia unifica el tratamiento de datos y la interfaz gráfica mediante un tema compartido y modularidad en clases, facilitando mantenimiento y experiencia de usuario.
+
+
+\section{Metodos}
+La base de datos se construye sobre MySQL siguiendo el diagrama definido en las instrucciones: tablas como `categoria`, `transaccion`, `presupuesto_especifico`, `presupuesto_general` e `impuesto_anual` respetan claves primarias compuestas y restricciones de chequeo para garantizar consistencia. El script SQL dump crea columnas específicas (monto, fecha, periodicidad, tipo) y relaciones con llaves foráneas; además, consideramos mecanismos de validación para evitar insertos fuera del rango esperado.
+
+La organización del código sigue una estructura modular que se describe en la Figura~\ref{fig:estructura}. El paquete raíz `finanzas_app` contiene submódulos para GUI, lógica y datos; dentro de `gui/` están los paneles temáticos y el gestor principal, `logic/` agrupa cálculos y modelo predictivo, y `db/` centraliza la conexión junto con los repositorios. Además, el virtualenv `finazasPersona` y scripts auxiliares conviven en la raíz del proyecto para facilitar pruebas.
+
+\begin{figure}[h]
+\centering
+\begin{tabular}{l}
+  exttt{finanzas_app/}\\
+\quad \texttt{gui/}\\
+\quad\quad \texttt{dashboard.py, gastos.py, ...}\\
+\quad \texttt{logic/}\\
+\quad\quad \texttt{calculos.py, graficos.py, modelo.py}\\
+\quad \texttt{db/}\\
+\quad\quad \texttt{connection.py, repositories.py}\\
+\quad \texttt{models.py, config.py, gui.py}\\
+\quad \texttt{scriptdb.py}\\
+  exttt{finazasPersona/}\\
+\quad \texttt{Lib/, Scripts/, pyvenv.cfg}
+\end{tabular}
+\caption{Estructura modular del proyecto.}
+\label{fig:estructura}
+\end{figure}
+
+La conexión a MySQL se maneja mediante el archivo de configuración (`db_config.json`), cargado por `db/connection.py`, que expone un pool de conexiones reutilizable. Las clases del módulo `repositories` (`CategoriaRepository`, `TransaccionRepository`, `PresupuestoRepository`, `ImpuestoRepository`) encapsulan las operaciones de lectura y escritura, proyectando entidades del dominio y separando la lógica de consultas específicas. Estas clases se consumen desde las pantallas del GUI y desde los servicios de cálculo, asegurando una única fuente de verdad y simplificando pruebas.
+
+La capa gráfica se implementó con Tkinter extendido por un tema flexible (`Theme`), que provee colores, fuentes y logo compartido para mantener coherencia entre paneles. Usamos `ttk` y `tk` para construir frames personalizados (dashboard, gastos, impuestos, ingresos, presupuestos, reportes, predicciones y transacciones) que alojan controles de ingreso, tablas y contenedores para métricas. Cada pantalla llama a los repositorios pertinentes, recupera datos y los transforma a widgets, mostrando también alertas y tooltips cuando se detectan condiciones extraordinarias.
+
+\begin{description}
+  \item[Dashboard:] resume saldos totales, evolución semanal, alertas de presupuesto y botones de navegación rápida hacia los demás componentes.
+  \item[Gastos:] captura egresos, agrupa por categoría y periodicidad, muestra tablas filtrables y grafica distribución mensual.
+  \item[Ingresos:] registra entradas periódicas o únicas, valida fuentes y permite sincronizar valores con presupuestos existentes.
+  \item[Presupuestos:] compara montos planificados contra ejecutados, permite crear presupuestos generales y específicos y arroja indicadores sobre desviaciones.
+  \item[Impuestos:] consolida datos anuales, calcula deducciones y proyecta montos a pagar gracias a los agregados mensuales.  
+  \item[Reportes:] genera exportaciones y resúmenes descargables con estadísticas clave y gráficos comparativos de categorías.
+  \item[Predicciones:] despliega las proyecciones del modelo Random Forest junto con intervalos de confianza y comparaciones con los valores reales.
+  \item[Transacciones:] lista todos los movimientos con opciones de edición/eliminación y brinda filtros por fecha, categoría y monto.
+\end{description}
+
+Los cálculos para las distintas pantallas se organizan en `logic/calculos.py` y `logic/modelo.py`: se computan totales por categoría, balances mensuales, variaciones de presupuestos y comparaciones año a año. Las pantallas de reportes y dashboard muestran estadísticas como promedio mensual, gasto máximo y sumatorias de categorías priorizadas, mientras que la pantalla de predicción combina datos reales y proyectados.
+
+La visualización de datos en la GUI se apoya en Matplotlib y Seaborn para generar gráficos embebidos en Tkinter (líneas de tendencia, barras de distribución y pasteles). Cada canvas se renderiza sobre un contenedor `LabelFrame` con fondo temático, actualizando sus figuras al detectar nuevos registros o filtros de fecha.
+
+Dentro del módulo `logic/graficos.py` se agrupan funciones especializadas que devuelven `Figure` de Matplotlib o pintan directamente en `tk.Canvas`. Entre ellas destacan las comparativas mensuales (`render_monthly_comparison`, `budget_pie_figure`, `objective_comparison_figure`) que utilizan operaciones agregadas del repositorio `FinancialReportRepository`, los gráficos stacked (`fixed_category_stacked_figure`, `monthly_incomes_stacked_figure`) que muestran el comportamiento por categoría y los plots de tendencia (`variable_annual_trend_figure`, `annual_expense_line_figure`) construidos con Plotnine para conservar estilos consistentes. También se ofrece una serie de figuras complementarias como `monthly_spending_bar_figure`, `monthly_spending_pie_figure`, `annual_expense_boxplot_figure` o `annual_cumulative_savings_figure` y un heatmap semanal (`monthly_expense_heatmap_figure`) que facilitan el análisis visual rápido. Todas estas funciones llaman a los repositorios para obtener datos sanitizados y permiten que cada pantalla solicite la figura adecuada sin preocuparse por la consulta SQL subyacente.
+
+Para poblar la base de datos durante pruebas, desarrollamos un script auxiliar (`scriptdb.py`) que genera datos sintéticos: lee configuraciones de categorías, crea transacciones periódicas y agrega variaciones aleatorias para simular gastos variables. El script facilita demostrar el comportamiento de los gráficos y entrenar el modelo de predicción.
+
+El modelo de Random Forest se entrena dentro de `logic/modelo.py` con las variables históricas de gasto mensual por categoría. Elegimos Random Forest por su robustez ante variables no lineales y su capacidad para manejar interacciones entre categorías y periodicidades. Tras el entrenamiento, el modelo predice los montos futuros y se compara con los valores reales para mostrar la confianza de la proyección y permitir ajustes en los presupuestos.
+
+
+\section{Resultados}
+
+
+
+% Placeholder for future content
+\section{Discucion}
+
+
+
+\end{document}

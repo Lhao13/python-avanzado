@@ -29,6 +29,7 @@ class PresupuestoEspecifico:
     mes: Optional[int] = None
     monto: Optional[float] = None
     categoria_id: Optional[int] = None
+    comentario: Optional[str] = None
 
 
 

@@ -33,6 +33,7 @@ class PresupuestosFrame(tk.Frame):
         self._objective_year_var = tk.StringVar(value=str(now.year))
         self._objective_month_var = tk.StringVar(value=str(now.month))
         self._objective_amount_var = tk.StringVar()
+        self._objective_comment_var = tk.StringVar()
 
         self._chart_year_var = tk.StringVar(value=str(now.year))
         self._chart_month_var = tk.StringVar(value=str(now.month))
@@ -49,7 +50,8 @@ class PresupuestosFrame(tk.Frame):
 
     def _load_expense_categories(self) -> list[Categoria]:
         categories = self._categoria_repo.list_all()
-        return [cat for cat in categories if cat.tipo == "gasto"]
+        # Solo queremos mostrar gastos variables en el asistente de objetivos.
+        return [cat for cat in categories if cat.tipo == "gasto" and cat.periodicidad == "variable"]
 
     def _build_ui(self) -> None:
         self.grid_columnconfigure(0, weight=1)
@@ -70,10 +72,32 @@ class PresupuestosFrame(tk.Frame):
             bg=Theme.CARD_BG,
             fg=Theme.PRIMARY_TEXT,
         )
+        tk.Label(
+            labelframe,
+            text="Objetivos",
+            font=(None, 14, "bold"),
+            bg=Theme.CARD_BG,
+            fg=Theme.PRIMARY_TEXT,
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
+        # Explicación breve para guiar al usuario sobre el flujo de objetivos.
+        tk.Label(
+            labelframe,
+            text="Define un objetivo de gasto mensual por categoría y guarda el monto para compararlo con tus hábitos.",
+            wraplength=360,
+            bg=Theme.CARD_BG,
+            fg=Theme.SECONDARY_TEXT,
+        ).grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 8))
         combo = ttk.Combobox(labelframe, textvariable=self._objective_category_var, state="readonly")
         combo["values"] = list(self._category_lookup.keys())
         if combo["values"]:
             combo.current(0)
+        # Mensaje que aclara el contenido filtrado del combobox.
+        tk.Label(
+            labelframe,
+            text="Solo se muestran las categorías de gastos variables.",
+            bg=Theme.CARD_BG,
+            fg=Theme.SECONDARY_TEXT,
+        ).grid(row=2, column=0, columnspan=2, sticky="w")
         self._build_row(labelframe, "Categoría", combo)
         self._build_row(
             labelframe,
@@ -96,6 +120,19 @@ class PresupuestosFrame(tk.Frame):
                 fg=Theme.PRIMARY_TEXT,
             ),
         )
+        # Comentario opcional que describe la intención del objetivo.
+        self._build_row(
+            labelframe,
+            "Comentario",
+            tk.Entry(
+                labelframe,
+                textvariable=self._objective_comment_var,
+                bg=Theme.BACKGROUND,
+                fg=Theme.PRIMARY_TEXT,
+            ),
+        )
+        # Botón de acción ubicado justo después de los campos del formulario.
+        action_row = labelframe.grid_size()[1]
         tk.Button(
             labelframe,
             text="Guardar objetivo",
@@ -103,7 +140,7 @@ class PresupuestosFrame(tk.Frame):
             bg=Theme.ACTION_COLOR,
             fg="white",
             activebackground=Theme.ACTION_HOVER,
-        ).grid(row=4, column=0, columnspan=2, pady=(8, 0))
+        ).grid(row=action_row, column=0, columnspan=2, pady=(8, 0))
         return labelframe
 
     def _build_row(self, parent: tk.Frame, label: str, widget: tk.Widget) -> None:
@@ -167,11 +204,12 @@ class PresupuestosFrame(tk.Frame):
             fg=Theme.PRIMARY_TEXT,
         )
         list_frame.pack(fill="both", expand=True, pady=(0, 8))
-        columns = ("categoria", "monto")
+        columns = ("categoria", "monto", "comentario")
         self._objectives_tree = ttk.Treeview(list_frame, columns=columns, show="headings", height=5, selectmode="browse")
-        for col, heading in zip(columns, ("Categoría", "Monto")):
+        for col, heading in zip(columns, ("Categoría", "Monto", "Comentario")):
             self._objectives_tree.heading(col, text=heading)
-            self._objectives_tree.column(col, anchor="w", width=170)
+            width = 160 if col != "comentario" else 260
+            self._objectives_tree.column(col, anchor="w", width=width)
         tree_scroll = ttk.Scrollbar(list_frame, orient="vertical", command=self._objectives_tree.yview)
         self._objectives_tree.configure(yscrollcommand=tree_scroll.set)
         self._objectives_tree.pack(side="left", fill="both", expand=True)
@@ -240,12 +278,18 @@ class PresupuestosFrame(tk.Frame):
             year = self._parse_int(self._objective_year_var.get().strip(), "Año")
             month = self._parse_int(self._objective_month_var.get().strip(), "Mes")
             amount = self._parse_float(self._objective_amount_var.get().strip(), "Monto")
+            comentario = self._objective_comment_var.get().strip() or None
             presupuesto = PresupuestoEspecifico(
-                anio=year, mes=month, monto=amount, categoria_id=categoria_id
+                anio=year,
+                mes=month,
+                monto=amount,
+                categoria_id=categoria_id,
+                comentario=comentario,
             )
             self._presupuesto_especifico_repo.create(presupuesto)
             messagebox.showinfo("Presupuesto específico", "Presupuesto específico guardado correctamente.")
             self._objective_amount_var.set("")
+            self._objective_comment_var.set("")
             self._refresh_period_views()
         except Exception as exc:
             messagebox.showerror("Presupuesto específico", str(exc))
@@ -275,11 +319,12 @@ class PresupuestosFrame(tk.Frame):
             self._objectives_tree.delete(child)
         for row in self._objectives_data:
             monto = float(row.get("monto") or 0.0)
+            comentario = row.get("comentario") or ""
             self._objectives_tree.insert(
                 "",
                 "end",
                 iid=str(row.get("id_presupuesto")),
-                values=(row.get("nombre") or "Sin categoría", f"${monto:,.2f}"),
+                values=(row.get("nombre") or "Sin categoría", f"${monto:,.2f}", comentario),
             )
         self._clear_objective_selection()
 

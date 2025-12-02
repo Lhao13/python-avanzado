@@ -28,7 +28,8 @@ class PrediccionFrame(tk.Frame):
         ).pack(anchor="w")
         tk.Label(
             self,
-            text="Obtén una estimación de los próximos meses basada en tu historial.",
+            text="Usamos Random Forest porque captura relaciones no lineales y evita sobreajustar al mezclar múltiples árboles con diferentes subconjuntos de transacciones.",
+            wraplength=520,
             bg=Theme.BACKGROUND,
             fg=Theme.SECONDARY_TEXT,
         ).pack(anchor="w", pady=(0, 12))
@@ -40,6 +41,23 @@ class PrediccionFrame(tk.Frame):
             bg=Theme.BACKGROUND,
         )
         self._status_label.pack(anchor="w", pady=(0, 12))
+
+        self._methodology_label = tk.Label(
+            self,
+            text="Modelo evaluado con TimeSeriesSplit (entrenando sobre meses anteriores y validando mes a mes para evitar fuga de datos).",
+            fg=Theme.SECONDARY_TEXT,
+            bg=Theme.BACKGROUND,
+            wraplength=520,
+        )
+        self._methodology_label.pack(anchor="w", pady=(0, 6))
+        self._metrics_label = tk.Label(
+            self,
+            text="",
+            fg=Theme.SECONDARY_TEXT,
+            bg=Theme.BACKGROUND,
+            wraplength=520,
+        )
+        self._metrics_label.pack(anchor="w", pady=(0, 6))
 
         btn = tk.Button(
             self,
@@ -62,6 +80,23 @@ class PrediccionFrame(tk.Frame):
         )
         self._chart_container.pack(fill="both", expand=True, pady=(12, 0))
         self._canvas: Optional[FigureCanvasTkAgg] = None
+        tk.Label(
+            self,
+            text="Variables clave",
+            font=(None, 12, "bold"),
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).pack(anchor="w", pady=(12, 0))
+        self._importance_container = tk.Frame(
+            self,
+            bd=1,
+            relief="solid",
+            padx=6,
+            pady=6,
+            bg=Theme.CARD_BG,
+        )
+        self._importance_container.pack(fill="both", expand=True, pady=(12, 0))
+        self._importance_canvas: Optional[FigureCanvasTkAgg] = None
         self._total_label = tk.Label(
             self,
             text="",
@@ -75,10 +110,16 @@ class PrediccionFrame(tk.Frame):
         if self._canvas is not None:
             self._canvas.get_tk_widget().destroy()
             self._canvas = None
+        self._clear_importance_chart()
+
+    def _clear_importance_chart(self) -> None:
+        if self._importance_canvas is not None:
+            self._importance_canvas.get_tk_widget().destroy()
+            self._importance_canvas = None
 
     def _generate_prediction(self) -> None:
         try:
-            forecast, score = predict_future_expenses(months=6)
+            forecast, metrics_real, metrics_cv, importances = predict_future_expenses(months=6)
         except ValueError as exc:
             messagebox.showwarning("Predicción", str(exc))
             self._status_label.config(text=str(exc), fg="#a00")
@@ -95,7 +136,15 @@ class PrediccionFrame(tk.Frame):
             self._clear_chart()
             return
 
-        self._status_label.config(text=f"Predicción generada (R² ≈ {score:.2f}).", fg="#070")
+        self._status_label.config(text="Predicción generada (TimeSeriesSplit, sin fuga temporal).", fg="#070")
+        months = len(forecast)
+        accumulated_error = metrics_real["MAE"] * months
+        metrics_text = (
+            f"Entrenamiento real (últimos {months} meses) → MAE ${metrics_real['MAE']:,.2f} MSE ${metrics_real['MSE']:,.2f} RMSE ${metrics_real['RMSE']:,.2f}"
+            f"\nValidación cruzada → MAE ${metrics_cv['CV_MAE']:,.2f} MSE ${metrics_cv['CV_MSE']:,.2f} RMSE ${metrics_cv['CV_RMSE']:,.2f}"
+            f"\nError acumulado estimado en el horizonte: ${accumulated_error:,.2f}"
+            "\nErrores expresados en pesos mensuales.")
+        self._metrics_label.config(text=metrics_text, fg=Theme.PRIMARY_TEXT)
         figure = Figure(figsize=(8, 4))
         ax = figure.subplots()
         periods = forecast["period"].tolist()
@@ -123,3 +172,23 @@ class PrediccionFrame(tk.Frame):
 
         total = (fixed_series + variable_series).sum()
         self._total_label.config(text=f"Total estimado: ${total:,.2f}")
+
+        self._render_importance_chart(importances)
+
+    def _render_importance_chart(self, importances: pd.DataFrame) -> None:
+        # Dibuja un gráfico de barras horizontales con las variables más influyentes.
+        if importances.empty:
+            self._clear_importance_chart()
+            return
+        self._clear_importance_chart()
+        top_features = importances.head(8)
+        figure = Figure(figsize=(6, 3))
+        ax = figure.subplots()
+        ax.barh(top_features["feature"], top_features["importance"], color="#2e86de")
+        ax.set_xlabel("Importancia")
+        ax.set_title("Variables clave del modelo")
+        ax.invert_yaxis()
+        ax.grid(False)
+        self._importance_canvas = FigureCanvasTkAgg(figure, master=self._importance_container)
+        self._importance_canvas.draw()
+        self._importance_canvas.get_tk_widget().pack(fill="both", expand=True)

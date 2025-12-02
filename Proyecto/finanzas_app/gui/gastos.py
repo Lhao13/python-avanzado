@@ -76,6 +76,21 @@ class GastosFrame(tk.Frame):
         self._variable_year_chart_canvas: FigureCanvasTkAgg | None = None
 
         # El fondo del canvas se mantiene coherente con el tema principal.
+        # Encabezado contextual para explicar el propósito de este panel.
+        tk.Label(
+            self._content_frame,
+            text="Gastos",
+            font=(None, 16, "bold"),
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).pack(anchor="w")
+        tk.Label(
+            self._content_frame,
+            text="Revisa tus gastos fijos, variables y el histórico por categoría para identificar ajustes y estabilizar tu presupuesto.",
+            wraplength=520,
+            bg=Theme.BACKGROUND,
+            fg=Theme.SECONDARY_TEXT,
+        ).pack(anchor="w", pady=(0, 12))
         control_frame = tk.Frame(self._content_frame, bg=Theme.BACKGROUND)
         control_frame.pack(fill="x", pady=(0, 12))
         self._build_year_selector(control_frame)

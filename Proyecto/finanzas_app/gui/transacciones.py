@@ -179,7 +179,9 @@ class TransactionForm(tk.Frame):
 
         columns = (
             ("fecha", "Fecha", 110, "center"),
-            ("categoria", "Categoría", 150, "w"),
+            ("categoria", "Categoría", 140, "w"),
+            ("tipo", "Tipo", 90, "center"),
+            ("periodicidad", "Periodicidad", 120, "center"),
             ("descripcion", "Descripción", 160, "w"),
             ("monto", "Monto", 100, "e"),
             ("cantidad", "Cantidad", 80, "center"),
@@ -322,6 +324,8 @@ class TransactionForm(tk.Frame):
                 values=(
                     fecha_text,
                     row.get("categoria") or "-",
+                    row.get("tipo", "-").capitalize() if row.get("tipo") else "-",
+                    row.get("periodicidad", "-").capitalize() if row.get("periodicidad") else "-",
                     row.get("description") or "",
                     f"${monto:,.2f}",
                     cantidad if cantidad is not None else "",
@@ -375,13 +379,15 @@ class TransactionForm(tk.Frame):
         except ValueError:
             messagebox.showerror("Monto inválido", "Ingresa un monto numérico válido para la edición.")
             return
-        cantidad = None
-        if vars_map["quantity"].get().strip():
+        quantity_input = vars_map["quantity"].get().strip()
+        if quantity_input:
             try:
-                cantidad = int(vars_map["quantity"].get())
+                cantidad = int(quantity_input)
             except ValueError:
                 messagebox.showerror("Cantidad inválida", "La cantidad debe ser un entero.")
                 return
+        else:
+            cantidad = 1
         try:
             fecha = datetime.strptime(vars_map["date"].get().strip(), "%Y-%m-%d").date()
         except ValueError:
@@ -428,13 +434,15 @@ class TransactionForm(tk.Frame):
         except ValueError:
             messagebox.showerror("Monto inválido", "Ingresa un monto numérico válido.")
             return
-        cantidad = None
-        if vars_map["quantity"].get().strip():
+        quantity_input = vars_map["quantity"].get().strip()
+        if quantity_input:
             try:
-                cantidad = int(vars_map["quantity"].get())
+                cantidad = int(quantity_input)
             except ValueError:
                 messagebox.showerror("Cantidad inválida", "La cantidad debe ser un entero.")
                 return
+        else:
+            cantidad = 1
         try:
             fecha = datetime.strptime(vars_map["date"].get().strip(), "%Y-%m-%d").date()
         except ValueError:

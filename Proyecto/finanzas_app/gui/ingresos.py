@@ -49,6 +49,21 @@ class IngresosFrame(tk.Frame):
         self._available_years = sorted(set(self._available_years))
 
         # Mantiene el fondo principal del tema para los controles.
+        # Encabezado que describe la vista de ingresos.
+        tk.Label(
+            self,
+            text="Ingresos",
+            font=(None, 16, "bold"),
+            bg=Theme.BACKGROUND,
+            fg=Theme.PRIMARY_TEXT,
+        ).pack(anchor="w")
+        tk.Label(
+            self,
+            text="Compara tus ingresos mensuales, anuales y por categoría para entender la evolución de tus entradas.",
+            wraplength=520,
+            bg=Theme.BACKGROUND,
+            fg=Theme.SECONDARY_TEXT,
+        ).pack(anchor="w", pady=(0, 12))
         control_frame = tk.Frame(self, bg=Theme.BACKGROUND)
         control_frame.pack(fill="x", pady=(0, 12))
         self._build_monthly_controls(control_frame)

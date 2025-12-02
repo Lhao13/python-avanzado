@@ -104,19 +104,23 @@ class TransaccionRepository(BaseRepository):
         params: list[Any] = [categoria_id]
         query = """
         SELECT
-            Id_Transaccion AS id_transaccion,
-            monto,
-            cantidad,
-            fecha,
-            Categoria_Id_Categoria AS categoria_id,
-            description
-        FROM transaccion
-        WHERE Categoria_Id_Categoria = %s
+            t.Id_Transaccion AS id_transaccion,
+            t.monto,
+            t.cantidad,
+            t.fecha,
+            t.description,
+            c.Id_Categoria AS categoria_id,
+            c.nombre AS categoria,
+            c.tipo,
+            c.periodicidad
+        FROM transaccion t
+        JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
+        WHERE t.Categoria_Id_Categoria = %s
         """
         if year is not None:
-            query += " AND YEAR(fecha) = %s"
+            query += " AND YEAR(t.fecha) = %s"
             params.append(year)
-        query += " ORDER BY fecha DESC"
+        query += " ORDER BY t.fecha DESC"
         rows = self._execute_read(query, tuple(params))
         return [Transaccion(**row) for row in rows]
 
@@ -130,7 +134,9 @@ class TransaccionRepository(BaseRepository):
             t.fecha,
             t.description,
             c.Id_Categoria AS categoria_id,
-            c.nombre AS categoria
+            c.nombre AS categoria,
+            c.tipo AS tipo,
+            c.periodicidad AS periodicidad
         FROM transaccion t
         JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
         ORDER BY t.fecha DESC
@@ -192,14 +198,15 @@ class PresupuestoEspecificoRepository(BaseRepository):
     def create(self, presupuesto: PresupuestoEspecifico) -> int:
         """Inserta un presupuesto mensual para una categoría."""
         query = """
-        INSERT INTO presupuesto_especifico (anio, mes, monto, Categoria_Id_Categoria)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO presupuesto_especifico (anio, mes, monto, Categoria_Id_Categoria, Comentario)
+        VALUES (%s, %s, %s, %s, %s)
         """
         params = (
             presupuesto.anio,
             presupuesto.mes,
             presupuesto.monto,
             presupuesto.categoria_id,
+            presupuesto.comentario,
         )
         presupuesto.id_presupuesto = self._execute_write(query, params)
         return presupuesto.id_presupuesto or 0
@@ -212,7 +219,8 @@ class PresupuestoEspecificoRepository(BaseRepository):
             anio,
             mes,
             monto,
-            Categoria_Id_Categoria AS categoria_id
+            Categoria_Id_Categoria AS categoria_id,
+            Comentario AS comentario
         FROM presupuesto_especifico
         """
         rows = self._execute_read(query)
@@ -226,7 +234,8 @@ class PresupuestoEspecificoRepository(BaseRepository):
             p.mes,
             p.monto,
             c.Id_Categoria AS categoria_id,
-            c.nombre
+            c.nombre,
+            p.Comentario AS comentario
         FROM presupuesto_especifico p
         JOIN categoria c ON p.Categoria_Id_Categoria = c.Id_Categoria
         WHERE p.anio = %s AND p.mes = %s
@@ -249,7 +258,8 @@ class PresupuestoEspecificoRepository(BaseRepository):
             p.mes,
             p.monto,
             c.Id_Categoria AS categoria_id,
-            c.nombre
+            c.nombre,
+            p.Comentario AS comentario
         FROM presupuesto_especifico p
         JOIN categoria c ON p.Categoria_Id_Categoria = c.Id_Categoria
         WHERE p.anio = %s AND p.mes = %s
@@ -592,6 +602,7 @@ class FinancialReportRepository(BaseRepository):
         SELECT
             c.Id_Categoria AS categoria_id,
             c.nombre,
+            c.nombre AS categoria,
             SUM(t.monto) AS total
         FROM transaccion t
         JOIN categoria c ON t.Categoria_Id_Categoria = c.Id_Categoria
